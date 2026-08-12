@@ -36,6 +36,17 @@
   --gold-wash:rgba(255,194,77,.09);
   --gold-line:rgba(255,194,77,.30);
   --green:#2BD98A;
+
+  /* one colour per kind of call — see kindKey() */
+  --k-pre:#FF3B30;    --k-pre-w:rgba(255,59,48,.13);    --k-pre-l:rgba(255,59,48,.34);
+  --k-post:#34C759;   --k-post-w:rgba(52,199,89,.12);   --k-post-l:rgba(52,199,89,.32);
+  --k-m3:#4C8DFF;     --k-m3-w:rgba(76,141,255,.13);    --k-m3-l:rgba(76,141,255,.34);
+  --k-m6:#14B8C4;     --k-m6-w:rgba(20,184,196,.13);    --k-m6-l:rgba(20,184,196,.34);
+  --k-m9:#A855F7;     --k-m9-w:rgba(168,85,247,.14);    --k-m9-l:rgba(168,85,247,.36);
+  --k-m12:#F5A524;    --k-m12-w:rgba(245,165,36,.13);   --k-m12-l:rgba(245,165,36,.34);
+  --k-bday:#FF5CA8;   --k-bday-w:rgba(255,92,168,.13);  --k-bday-l:rgba(255,92,168,.34);
+  --k-follow:#8A94A6; --k-follow-w:rgba(138,148,166,.12);--k-follow-l:rgba(138,148,166,.30);
+
   --radius:4px;
   --disp:"Archivo","Arial Narrow",sans-serif;
   --sans:"Inter Tight",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -186,9 +197,18 @@ input[type=date].input::-webkit-calendar-picker-indicator{filter:invert(58%) sep
   transition:border-color .16s ease,box-shadow .16s ease,transform .1s ease;
 }
 .call:hover{border-color:var(--line-hot);box-shadow:0 0 0 1px rgba(46,139,255,.10),0 10px 30px -18px #000;transform:translateY(-1px)}
-.call.late{border-left-color:var(--red);background:linear-gradient(100deg,rgba(255,77,77,.10),var(--deep) 46%)}
-.call.now{border-left-color:var(--blue);background:linear-gradient(100deg,rgba(46,139,255,.13),var(--deep) 46%)}
-.call.soon{border-left-color:var(--line-hot)}
+
+/* the left edge and the wash say WHAT KIND of call this is */
+.call.k-pre   {border-left-color:var(--k-pre);   background:linear-gradient(100deg,var(--k-pre-w),var(--deep) 46%)}
+.call.k-post  {border-left-color:var(--k-post);  background:linear-gradient(100deg,var(--k-post-w),var(--deep) 46%)}
+.call.k-m3    {border-left-color:var(--k-m3);    background:linear-gradient(100deg,var(--k-m3-w),var(--deep) 46%)}
+.call.k-m6    {border-left-color:var(--k-m6);    background:linear-gradient(100deg,var(--k-m6-w),var(--deep) 46%)}
+.call.k-m9    {border-left-color:var(--k-m9);    background:linear-gradient(100deg,var(--k-m9-w),var(--deep) 46%)}
+.call.k-m12   {border-left-color:var(--k-m12);   background:linear-gradient(100deg,var(--k-m12-w),var(--deep) 46%)}
+.call.k-bday  {border-left-color:var(--k-bday);  background:linear-gradient(100deg,var(--k-bday-w),var(--deep) 46%)}
+.call.k-follow{border-left-color:var(--k-follow);background:linear-gradient(100deg,var(--k-follow-w),var(--deep) 46%)}
+/* overdue is a ring, not a colour — the colour is already saying what the call is */
+.call.od{box-shadow:inset 0 0 0 1px rgba(255,77,77,.30)}
 .call-body{flex:1;min-width:0}
 .call-name{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;color:#fff}
 .call-name a{text-decoration:none;border-bottom:1px solid transparent}
@@ -202,12 +222,23 @@ input[type=date].input::-webkit-calendar-picker-indicator{filter:invert(58%) sep
   font-size:9.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
   background:var(--panel-2);color:var(--txt-2);border:1px solid var(--line);
 }
-.tag.pre{background:var(--gold-wash);color:var(--gold);border-color:var(--gold-line)}
-.tag.post{background:var(--blue-wash);color:var(--blue-hot);border-color:var(--blue-line)}
 .tag.late{background:var(--red-wash);color:var(--red);border-color:var(--red-line)}
-.tag.mile{background:rgba(43,217,138,.10);color:var(--green);border-color:rgba(43,217,138,.32)}
-.tag.bday{background:rgba(168,120,255,.11);color:#B58BFF;border-color:rgba(168,120,255,.34)}
 .tag.plain{background:transparent;color:var(--txt-3)}
+.tag.k-pre   {background:var(--k-pre-w);   color:var(--k-pre);   border-color:var(--k-pre-l)}
+.tag.k-post  {background:var(--k-post-w);  color:var(--k-post);  border-color:var(--k-post-l)}
+.tag.k-m3    {background:var(--k-m3-w);    color:var(--k-m3);    border-color:var(--k-m3-l)}
+.tag.k-m6    {background:var(--k-m6-w);    color:var(--k-m6);    border-color:var(--k-m6-l)}
+.tag.k-m9    {background:var(--k-m9-w);    color:#C58BFF;        border-color:var(--k-m9-l)}
+.tag.k-m12   {background:var(--k-m12-w);   color:var(--k-m12);   border-color:var(--k-m12-l)}
+.tag.k-bday  {background:var(--k-bday-w);  color:var(--k-bday);  border-color:var(--k-bday-l)}
+.tag.k-follow{background:var(--k-follow-w);color:#A7B2C4;        border-color:var(--k-follow-l)}
+.tag.tries{background:var(--red-wash);color:var(--red);border-color:var(--red-line)}
+
+/* the key under the banner */
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:-14px 0 24px 2px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--txt-3)}
+.legend i{width:9px;height:9px;border-radius:2px;display:block}
 
 /* ---------- the banner ---------- */
 .banner{
@@ -578,14 +609,34 @@ const LEAD_STATUS = {
 };
 
 /* every automatic call type, in one place */
-function kindTag(r) {
+/* every call has exactly one colour. The key is the slug used in CSS: .call.k-<key> / .tag.k-<key> */
+const KINDS = {
+  pre:    { label: "Draft call",    colour: "#FF3B30" },
+  post:   { label: "Confirm draft", colour: "#34C759" },
+  m3:     { label: "3 month",       colour: "#4C8DFF" },
+  m6:     { label: "6 month",       colour: "#14B8C4" },
+  m9:     { label: "9 month",       colour: "#A855F7" },
+  m12:    { label: "12 month",      colour: "#F5A524" },
+  bday:   { label: "Birthday",      colour: "#FF5CA8" },
+  follow: { label: "Follow-up",     colour: "#8A94A6" },
+};
+
+function kindKey(r) {
   switch (r.kind) {
-    case "pre_draft":  return ["pre",  "Before first draft"];
-    case "post_draft": return ["post", "Confirm draft cleared"];
-    case "milestone":  return ["mile", `${r.month_no} month check`];
-    case "birthday":   return ["bday", "Birthday"];
-    default:           return null;
+    case "pre_draft":  return "pre";
+    case "post_draft": return "post";
+    case "milestone":  return ({3:"m3",6:"m6",9:"m9",12:"m12"})[r.month_no] || "m3";
+    case "birthday":   return "bday";
+    default:           return "follow";
   }
+}
+function kindTag(r) {
+  const k = kindKey(r);
+  return [k, KINDS[k].label];
+}
+function legend() {
+  return `<div class="legend">${Object.entries(KINDS).map(([k,v]) =>
+    `<span><i style="background:${v.colour}"></i>${esc(v.label)}</span>`).join("")}</div>`;
 }
 
 const state = {
@@ -600,7 +651,6 @@ const state = {
   leads: [],
   openLead: null,
   leadFilter: "open",
-  soldFilter: "all",
   showImport: false,
   importRows: null,      // parsed screenshot, waiting for the agent to confirm
   importBusy: false,
@@ -870,6 +920,7 @@ function shell() {
   const cbDue = state.leads.filter(l => isWorkable(l) && l.callback_at && daysBetween(l.callback_at) <= 0).length;
   const nav = [
     ["clients","Clients", due],
+    ["sold","Sold", 0],
     ["leads","Leads", cbDue],
     ...(isAdmin ? [["team","Team", state.pending.filter(p=>p.status==="pending").length]] : [])
   ];
@@ -893,6 +944,7 @@ function shell() {
       ${state.msg ? `<div class="notice ${state.msg.kind}">${esc(state.msg.text)}</div>` : ""}
       ${state.view==="team" ? teamView()
         : state.view==="leads" ? leadsView()
+        : state.view==="sold" ? soldView()
         : clientsView()}
     </main>
     <nav class="mobilenav">
@@ -916,6 +968,46 @@ function adminScopeBar() {
 }
 
 /* ---------- TODAY ---------- */
+function nextCallFor(id) {
+  return state.reminders.filter(r => r.client_id === id)
+           .sort((a,b) => a.due_date < b.due_date ? -1 : 1)[0];
+}
+
+/* the book table, shared by Clients and Sold */
+function bookTable(rows) {
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Client</th><th>Phone</th><th>Sold</th><th>Carrier</th>
+      <th class="r">Premium</th><th>Start date</th><th>Next call</th>
+    </tr></thead>
+    <tbody>${rows.map(c => {
+      const n = nextCallFor(c.id);
+      const overdue = n && daysBetween(n.due_date) < 0;
+      const k = n ? kindKey(n) : null;
+      return `<tr data-act="open" data-id="${c.id}">
+        <td><strong>${esc((c.full_name || "").trim() || "Unnamed")}</strong>
+          ${c.date_of_birth ? `<div style="font-size:12px;color:var(--txt-3)">age ${age(c.date_of_birth)}</div>` : ""}</td>
+        <td>${esc(c.phone || "\u2014")}</td>
+        <td>${isSold(c)
+          ? `<span class="stage"><span class="dot s-sold"></span>${esc(prettyDate(c.sale_date))}</span>`
+          : `<span class="stage"><span class="dot s-new"></span>Not yet</span>`}</td>
+        <td>${esc(c.carrier || "\u2014")}</td>
+        <td class="r">${c.monthly_premium ? money(c.monthly_premium) : "\u2014"}</td>
+        <td>${c.policy_start_date ? esc(prettyDate(c.policy_start_date)) : "\u2014"}</td>
+        <td>${n ? `<span style="display:inline-flex;align-items:center;gap:7px">
+                     <i style="width:8px;height:8px;border-radius:2px;background:${KINDS[k].colour};display:block"></i>
+                     <span style="color:${overdue?"var(--red)":"inherit"};font-weight:${overdue?700:400}">${esc(relDay(n.due_date))}</span>
+                   </span>`
+                : `<span style="color:var(--txt-3)">none set</span>`}</td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
+}
+
+function matches(c, q) {
+  return `${c.full_name} ${c.phone} ${c.carrier} ${c.policy_number} ${c.city}`.toLowerCase().includes(q);
+}
+
+/* ---------- CLIENTS: the day's calls, plus everyone still open ---------- */
 function clientsView() {
   const late = state.reminders.filter(r => daysBetween(r.due_date) <  0);
   const now  = state.reminders.filter(r => daysBetween(r.due_date) === 0);
@@ -925,70 +1017,81 @@ function clientsView() {
   const first = (state.profile.full_name || "").split(" ")[0];
 
   const q = state.search.toLowerCase().trim();
-  const rows = state.clients.filter(c => {
-    if (state.soldFilter === "sold" && !isSold(c)) return false;
-    if (state.soldFilter === "open" && isSold(c))  return false;
-    if (!q) return true;
-    return `${c.full_name} ${c.phone} ${c.carrier} ${c.policy_number} ${c.city}`.toLowerCase().includes(q);
-  });
-  const nextFor = id => state.reminders.filter(r => r.client_id === id)
-                          .sort((a,b) => a.due_date < b.due_date ? -1 : 1)[0];
-  const chips = [["all","Everyone"],["sold","Sold"],["open","No sale yet"]];
+  // searching looks through the whole book, sold or not — you just want to find the person
+  const rows = q ? state.clients.filter(c => matches(c, q))
+                 : state.clients.filter(c => !isSold(c));
+  const open = state.clients.filter(c => !isSold(c)).length;
+  const due  = late.length + now.length;
 
   return `
   <div class="page-head">
     <h2 class="display">${greet}${first ? ", " + esc(first) : ""}.</h2>
-    <p class="sub">${state.clients.length} client${state.clients.length===1?"":"s"}${
-      late.length + now.length ? ` &middot; ${late.length + now.length} call${late.length+now.length===1?"":"s"} due` : " &middot; no calls due"}.</p>
+    <p class="sub">${due ? `${due} call${due===1?"":"s"} due` : "No calls due"} &middot; ${open} still open &middot; ${
+      state.clients.filter(isSold).length} sold.</p>
   </div>
 
   ${q ? "" : `
     ${importDrop("client")}
     ${banner(late, now)}
+    ${due ? legend() : ""}
     ${callBlock("Overdue", late, "late")}
     ${callBlock("Due today", now, "now")}
   `}
 
   <section class="section">
-    <div class="section-head"><h3>${q ? "Found" : "The book"}</h3><span class="count">${rows.length}</span></div>
+    <div class="section-head"><h3>${q ? "Found" : "Still working"}</h3><span class="count">${rows.length}</span></div>
     <div class="toolbar">
-      <input class="input" placeholder="Search name, phone, carrier…" value="${esc(state.search)}" data-act="search">
-      <div class="chips">${chips.map(([v,l]) =>
-        `<button class="chip ${state.soldFilter===v?"on":""}" data-act="soldfilter" data-v="${v}">${l}</button>`).join("")}</div>
+      <input class="input" placeholder="Search name, phone, carrier\u2026" value="${esc(state.search)}" data-act="search">
+      ${q ? `<span class="tag plain">searching the whole book, sold included</span>` : ""}
       <span class="spacer"></span>
       <button class="btn ghost sm" data-act="export">Export CSV</button>
       <button class="btn green sm" data-act="new">New client</button>
     </div>
 
     ${rows.length === 0 ? `<div class="empty">
-        <div class="big">${q ? "No match." : "No clients yet."}</div>
+        <div class="big">${q ? "No match." : "Nobody open."}</div>
         <div style="margin-bottom:${q ? "0" : "16px"}">${q
           ? "Nobody in the book matches that search."
-          : "Sell one, or convert a lead over from the Leads tab."}</div>
-        ${q ? "" : `<button class="btn green" data-act="new">Add your first client</button>`}
+          : (state.clients.length
+              ? "Everyone in your book is sold. They are on the Sold tab."
+              : "Add someone, or convert a lead over from the Leads tab.")}</div>
+        ${q ? "" : `<button class="btn green" data-act="new">${state.clients.length ? "Add a client" : "Add your first client"}</button>`}
       </div>`
-    : `<div class="table-wrap"><table>
-        <thead><tr>
-          <th>Client</th><th>Phone</th><th>Sold</th><th>Carrier</th>
-          <th class="r">Premium</th><th>Start date</th><th>Next call</th>
-        </tr></thead>
-        <tbody>${rows.map(c => {
-          const n = nextFor(c.id);
-          const overdue = n && daysBetween(n.due_date) < 0;
-          return `<tr data-act="open" data-id="${c.id}">
-            <td><strong>${esc((c.full_name || "").trim() || "Unnamed")}</strong>
-              ${c.date_of_birth ? `<div style="font-size:12px;color:var(--txt-3)">age ${age(c.date_of_birth)}</div>` : ""}</td>
-            <td>${esc(c.phone || "—")}</td>
-            <td>${isSold(c)
-              ? `<span class="stage"><span class="dot s-sold"></span>${esc(prettyDate(c.sale_date))}</span>`
-              : `<span class="stage"><span class="dot s-new"></span>Not yet</span>`}</td>
-            <td>${esc(c.carrier || "—")}</td>
-            <td class="r">${c.monthly_premium ? money(c.monthly_premium) : "—"}</td>
-            <td>${c.policy_start_date ? esc(prettyDate(c.policy_start_date)) : "—"}</td>
-            <td>${n ? `<span style="color:${overdue?"var(--red)":"inherit"};font-weight:${overdue?700:400}">${esc(relDay(n.due_date))}</span>`
-                    : `<span style="color:var(--txt-3)">none set</span>`}</td>
-          </tr>`;
-        }).join("")}</tbody></table></div>`}
+    : bookTable(rows)}
+  </section>`;
+}
+
+/* ---------- SOLD: the closed book ---------- */
+function soldView() {
+  const q = state.search.toLowerCase().trim();
+  const sold = state.clients.filter(isSold);
+  const rows = q ? sold.filter(c => matches(c, q)) : sold;
+
+  const ap = sold.reduce((s,c) => s + (Number(c.monthly_premium) || 0), 0);
+  const withCalls = sold.filter(c => nextCallFor(c.id)).length;
+
+  return `
+  <div class="page-head">
+    <h2 class="display">Sold.</h2>
+    <p class="sub">${sold.length} polic${sold.length===1?"y":"ies"}${
+      ap ? ` &middot; ${money(ap)}/mo &middot; ${money(ap*12)} annual` : ""}${
+      withCalls ? ` &middot; ${withCalls} with a call booked` : ""}.</p>
+  </div>
+
+  <section class="section">
+    <div class="section-head"><h3>${q ? "Found" : "The book"}</h3><span class="count">${rows.length}</span></div>
+    <div class="toolbar">
+      <input class="input" placeholder="Search name, phone, carrier\u2026" value="${esc(state.search)}" data-act="search">
+      <span class="spacer"></span>
+      <button class="btn ghost sm" data-act="export">Export CSV</button>
+    </div>
+
+    ${rows.length === 0 ? `<div class="empty">
+        <div class="big">${q ? "No match." : "Nothing sold yet."}</div>
+        <div>${q ? "Nobody sold matches that search."
+                 : "The moment you put a sale date on a client, they land here and the database books their calls."}</div>
+      </div>`
+    : bookTable(rows)}
   </section>`;
 }
 
@@ -1043,17 +1146,20 @@ function callBlock(title, rows, cls) {
 function callRow(r, cls) {
   const c = r.clients || {};
   const name = (c.full_name || "").trim() || "Unnamed client";
-  const kt = kindTag(r);
-  const kindChip = kt ? `<span class="tag ${kt[0]}">${esc(kt[1])}</span>` : "";
+  const k = kindKey(r);
+  const kindChip = `<span class="tag k-${k}">${esc(KINDS[k].label)}</span>`;
   const lateTag = daysBetween(r.due_date) < 0 ? `<span class="tag late">${relDay(r.due_date)}</span>` : "";
+  const tries = Number(r.attempts || 0);
+  const tryTag = tries > 0
+    ? `<span class="tag tries">${ordinal(tries + 1)} try &middot; no answer ${tries} time${tries===1?"":"s"}</span>` : "";
   const start = c.policy_start_date
     ? `<span>Starts ${prettyDate(c.policy_start_date)}${c.draft_day ? ` &middot; drafts the ${ordinal(c.draft_day)}` : ""}</span>` : "";
 
-  return `<div class="call ${cls}">
+  return `<div class="call k-${k}${cls === "late" ? " od" : ""}">
     <div class="call-body">
       <div class="call-name"><a data-act="open" data-id="${c.id}">${esc(name)}</a></div>
       <div class="call-meta">
-        ${kindChip}${lateTag}
+        ${kindChip}${lateTag}${tryTag}
         ${c.phone ? `<span>${esc(c.phone)}</span>` : `<span style="color:var(--red)">No phone on file</span>`}
         <span class="tag plain">${esc(prettyDate(r.due_date))}</span>
         ${c.carrier ? `<span>${esc(c.carrier)}</span>` : ""}
@@ -1063,8 +1169,8 @@ function callRow(r, cls) {
     </div>
     <div class="call-acts">
       ${c.phone ? `<a class="btn green sm" href="${telHref(c.phone)}" data-act="dial" data-rid="${r.id}" data-id="${c.id}">Call</a>` : ""}
-      <button class="btn ghost sm" data-act="done" data-rid="${r.id}" data-id="${c.id}">Done</button>
-      <button class="btn quiet sm" data-act="snooze" data-rid="${r.id}">Push</button>
+      <button class="btn ghost sm" data-act="talked" data-rid="${r.id}" data-id="${c.id}">Talked to</button>
+      <button class="btn quiet sm" data-act="noanswer" data-rid="${r.id}" data-id="${c.id}">No answer</button>
     </div>
   </div>`;
 }
@@ -1430,17 +1536,22 @@ function clientModal() {
 
       ${isNew ? "" : `
       <fieldset class="fieldset"><legend>Scheduled calls</legend>
-        ${rem.length ? rem.map(r => `<div class="call ${daysBetween(r.due_date)<0?"late":daysBetween(r.due_date)===0?"now":"soon"}" style="margin-bottom:6px">
+        ${rem.length ? rem.map(r => { const k = kindKey(r); const t = Number(r.attempts||0); return `
+          <div class="call k-${k}${daysBetween(r.due_date)<0?" od":""}" style="margin-bottom:6px">
             <div class="call-body">
               <div class="call-meta" style="margin-bottom:2px">
                 <strong>${esc(prettyDate(r.due_date))}</strong>
                 <span class="tag plain">${esc(relDay(r.due_date))}</span>
-                ${(() => { const k = kindTag(r); return k ? `<span class="tag ${k[0]}">${esc(k[1])}</span>` : ""; })()}
+                <span class="tag k-${k}">${esc(KINDS[k].label)}</span>
+                ${t>0?`<span class="tag tries">no answer ${t}&times;</span>`:""}
               </div>
               ${r.note?`<div class="call-note" style="margin-top:2px">${esc(r.note)}</div>`:""}
             </div>
-            <div class="call-acts"><button type="button" class="btn quiet sm" data-act="done" data-rid="${r.id}" data-id="${c.id}">Done</button></div>
-          </div>`).join("")
+            <div class="call-acts">
+              <button type="button" class="btn ghost sm" data-act="talked" data-rid="${r.id}" data-id="${c.id}">Talked to</button>
+              <button type="button" class="btn quiet sm" data-act="noanswer" data-rid="${r.id}" data-id="${c.id}">No answer</button>
+            </div>
+          </div>`; }).join("")
         : `<p style="font-size:13.5px;color:var(--txt-3);margin-bottom:14px">Nothing scheduled.</p>`}
         <div class="chips" style="margin-top:10px">
           <span class="eyebrow" style="align-self:center;margin-right:4px">Call back</span>
@@ -1486,7 +1597,7 @@ document.addEventListener("click", async (e) => {
 
   switch (act) {
     case "tab":   state.authTab = el.dataset.v; state.msg = null; return render();
-    case "go":    state.view = el.dataset.v; state.msg = null; return render();
+    case "go":    state.view = el.dataset.v; state.msg = null; state.search = ""; return render();
     case "signout":
       await sb.auth.signOut();
       state.profile = null; state.authMode = null; state.pendingEmail = "";
@@ -1548,28 +1659,40 @@ document.addEventListener("click", async (e) => {
       return;
     }
 
-    case "done": {
+    /* you got hold of them — the call is finished and drops off the board */
+    case "talked": {
       const rid = el.dataset.rid;
+      const r = state.reminders.find(x => x.id === rid);
+      const what = r ? KINDS[kindKey(r)].label.toLowerCase() : "scheduled";
       const { error } = await sb.from("reminders").update({ done_at: new Date().toISOString() }).eq("id", rid);
       if (error) return flash(error.message, "bad");
-      await logActivity(el.dataset.id, "reminder_done", "Marked the scheduled call complete.");
+      await logActivity(el.dataset.id, "call", `Talked to the client — ${what} call done.`);
       await refresh();
       if (state.openClient) {
         const fresh = state.clients.find(x => x.id === state.openClient.id);
         if (fresh) state.openClient = { ...fresh };
       }
-      return flash("Call marked done.");
+      return flash("Talked to them. Call cleared.");
     }
 
-    case "snooze": {
+    /* nobody picked up — it rolls to tomorrow and stays on the board until you reach them */
+    case "noanswer": {
       const rid = el.dataset.rid;
       const r = state.reminders.find(x => x.id === rid);
       if (!r) return;
-      const next = isoPlus(1, parseISO(r.due_date) > parseISO(todayISO()) ? parseISO(r.due_date) : new Date());
-      const { error } = await sb.from("reminders").update({ due_date: next }).eq("id", rid);
+      const tries = Number(r.attempts || 0) + 1;
+      const next = isoPlus(1);
+      const { error } = await sb.from("reminders")
+        .update({ due_date: next, attempts: tries }).eq("id", rid);
       if (error) return flash(error.message, "bad");
+      await logActivity(el.dataset.id, "call",
+        `No answer (${ordinal(tries)} try). Trying again ${prettyDate(next)}.`);
       await refresh();
-      return flash("Pushed to " + prettyDate(next));
+      if (state.openClient) {
+        const fresh = state.clients.find(x => x.id === state.openClient.id);
+        if (fresh) state.openClient = { ...fresh };
+      }
+      return flash(`No answer. Back on your list ${prettyDate(next)}.`);
     }
 
     case "quickcb": {
@@ -1622,7 +1745,6 @@ document.addEventListener("click", async (e) => {
     case "export": return exportCSV();
     case "exportleads": return exportLeadsCSV();
     case "leadfilter": state.leadFilter = el.dataset.v; return render();
-    case "soldfilter": state.soldFilter = el.dataset.v; return render();
     case "toggleimport": state.showImport = !state.showImport; state.importError = null; return render();
 
     case "newlead":
@@ -1855,7 +1977,12 @@ async function saveClient(form) {
     state.openClient = null;
     await refresh();
 
-    if (row.policy_start_date && row.sale_date) {
+    const justSold = !wasSold && !!row.sale_date;
+    if (justSold && row.policy_start_date) {
+      flash(`Saved. ${row.full_name} moved to the Sold tab — the draft call and the 3, 6, 9 and 12 month checks are booked.`);
+    } else if (justSold) {
+      flash(`Saved. ${row.full_name} moved to the Sold tab. Add a policy start date and a draft day to get the calls booked.`);
+    } else if (row.policy_start_date && row.sale_date) {
       flash(`Saved. Persistency calls booked around the ${prettyDate(row.policy_start_date)} start date.`);
     } else {
       flash("Saved.");
@@ -2051,10 +2178,12 @@ function exportCSV() {
                 "sale_date","policy_start_date","carrier","policy_number",
                 "coverage_amount","term_years","monthly_premium","draft_day","health_notes","notes"];
   const q = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const csv = [cols.join(",")].concat(state.clients.map(c => cols.map(k => q(c[k])).join(","))).join("\r\n");
+  const onlySold = state.view === "sold";
+  const list = onlySold ? state.clients.filter(isSold) : state.clients;
+  const csv = [cols.join(",")].concat(list.map(c => cols.map(k => q(c[k])).join(","))).join("\r\n");
   const url = URL.createObjectURL(new Blob(["﻿"+csv], { type:"text/csv;charset=utf-8" }));
   const a = document.createElement("a");
-  a.href = url; a.download = `clients-${todayISO()}.csv`; a.click();
+  a.href = url; a.download = `${onlySold ? "sold" : "clients"}-${todayISO()}.csv`; a.click();
   URL.revokeObjectURL(url);
 }
 
