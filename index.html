@@ -237,6 +237,19 @@ input[type=date].input::-webkit-calendar-picker-indicator{filter:invert(58%) sep
 .tag.k-follow{background:var(--k-follow-w);color:#A7B2C4;        border-color:var(--k-follow-l)}
 .tag.tries{background:var(--red-wash);color:var(--red);border-color:var(--red-line)}
 
+/* the numbers strip */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:0 0 26px;
+  border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel)}
+.tile{padding:16px 20px;border-right:1px solid var(--line)}
+.tile:last-child{border-right:0}
+.tile .n{font-family:var(--disp);font-style:italic;font-weight:800;font-size:34px;line-height:1;
+  letter-spacing:-.02em;color:#fff}
+.tile .n.red{color:var(--red)}
+.tile .l{margin-top:7px;font-size:9.5px;font-weight:800;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--txt-3)}
+@media(max-width:820px){.tiles{grid-template-columns:repeat(2,1fr)}
+  .tile:nth-child(2){border-right:0}.tile:nth-child(1),.tile:nth-child(2){border-bottom:1px solid var(--line)}}
+
 /* the key under the banner */
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;margin:-14px 0 24px 2px}
 .legend span{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;
@@ -514,7 +527,7 @@ const AGENCY_NAME = "Closers Collective";
 
 /* How many days before the policy start date the "make sure it sticks"
    call fires. Must match the number in the database file (default 5). */
-const PRE_DRAFT_DAYS = 5;
+const PRE_DRAFT_DAYS = 4;   // matches sync_policy_reminders() in db/01_schema.sql
 
 /* ============================================================
    2. BOOT
@@ -654,6 +667,7 @@ const state = {
   leads: [],
   openLead: null,
   leadFilter: "open",
+  bookFilter: "all",
   showImport: false,
   importRows: null,      // parsed screenshot, waiting for the agent to confirm
   importBusy: false,
@@ -922,14 +936,13 @@ function shell() {
   const isAdmin = state.profile.role === "admin";
   const cbDue = state.leads.filter(l => isWorkable(l) && l.callback_at && daysBetween(l.callback_at) <= 0).length;
   const nav = [
-    ["clients","Clients", due],
-    ["sold","Sold", 0],
-    ["leads","Leads", cbDue],
+    ["today","Today", due],
+    ["pipeline","Pipeline", cbDue],
     ...(isAdmin ? [["team","Team", state.pending.filter(p=>p.status==="pending").length]] : [])
   ];
   return `<div class="shell">
     <aside class="rail">
-      <div class="brand">${MARK}<div><h1>${esc(AGENCY_NAME)}</h1></div></div>
+      <div class="brand">${MARK}<div><h1>${esc(AGENCY_NAME)}</h1><div style="font-size:8.5px;font-weight:800;letter-spacing:.22em;color:var(--txt-3);margin-top:3px">FINAL EXPENSE</div></div></div>
       <nav class="nav">
         ${nav.map(([v,label,n]) => `<a class="${state.view===v?"on":""}" data-act="go" data-v="${v}">
           <span>${label}</span>${n ? `<span class="pip">${n}</span>` : ""}</a>`).join("")}
@@ -946,9 +959,8 @@ function shell() {
       ${isAdmin ? adminScopeBar() : ""}
       ${state.msg ? `<div class="notice ${state.msg.kind}">${esc(state.msg.text)}</div>` : ""}
       ${state.view==="team" ? teamView()
-        : state.view==="leads" ? leadsView()
-        : state.view==="sold" ? soldView()
-        : clientsView()}
+        : state.view==="pipeline" ? pipelineView()
+        : todayView()}
     </main>
     <nav class="mobilenav">
       ${nav.map(([v,label,n]) => `<a class="${state.view===v?"on":""}" data-act="go" data-v="${v}">${label}${n?`<span class="pip">${n}</span>`:""}</a>`).join("")}
@@ -1011,90 +1023,124 @@ function matches(c, q) {
 }
 
 /* ---------- CLIENTS: the day's calls, plus everyone still open ---------- */
-function clientsView() {
-  const late = state.reminders.filter(r => daysBetween(r.due_date) <  0);
-  const now  = state.reminders.filter(r => daysBetween(r.due_date) === 0);
+/* ---------- TODAY: the call board, and nothing else ---------- */
+function todayView() {
+  const late  = state.reminders.filter(r => daysBetween(r.due_date) <  0);
+  const now   = state.reminders.filter(r => daysBetween(r.due_date) === 0);
+  const soon  = state.reminders.filter(r => { const d = daysBetween(r.due_date); return d > 0 && d <= 7; });
+  const board = late.length + now.length;   // what needs doing now; the next seven days sit below
 
   const hi = new Date().getHours();
   const greet = hi < 12 ? "Good morning" : hi < 17 ? "Good afternoon" : "Good evening";
   const first = (state.profile.full_name || "").split(" ")[0];
 
-  const q = state.search.toLowerCase().trim();
-  // searching looks through the whole book, sold or not — you just want to find the person
-  const rows = q ? state.clients.filter(c => matches(c, q))
-                 : state.clients.filter(c => !isSold(c));
-  const open = state.clients.filter(c => !isSold(c)).length;
-  const due  = late.length + now.length;
+  const sold = state.clients.filter(isSold);
+  const ap = sold.reduce((t,c) => t + (Number(c.monthly_premium) || 0), 0);
 
   return `
   <div class="page-head">
     <h2 class="display">${greet}${first ? ", " + esc(first) : ""}.</h2>
-    <p class="sub">${due ? `${due} call${due===1?"":"s"} due` : "No calls due"} &middot; ${open} still open &middot; ${
-      state.clients.filter(isSold).length} sold.</p>
+    <p class="sub">${board} call${board===1?"":"s"} on the board.</p>
   </div>
 
-  ${q ? "" : `
-    ${importDrop("client")}
-    ${banner(late, now)}
-    ${due ? legend() : ""}
-    ${callBlock("Overdue", late, "late")}
-    ${callBlock("Due today", now, "now")}
-  `}
+  ${banner(late, now)}
 
-  <section class="section">
-    <div class="section-head"><h3>${q ? "Found" : "Still working"}</h3><span class="count">${rows.length}</span></div>
-    <div class="toolbar">
-      <input class="input" placeholder="Search name, phone, carrier\u2026" value="${esc(state.search)}" data-act="search">
-      ${q ? `<span class="tag plain">searching the whole book, sold included</span>` : ""}
-      <span class="spacer"></span>
-      <button class="btn ghost sm" data-act="export">Export CSV</button>
-      <button class="btn green sm" data-act="new">New client</button>
-    </div>
+  <div class="tiles">
+    <div class="tile"><div class="n ${late.length?"red":""}">${late.length}</div><div class="l">Overdue</div></div>
+    <div class="tile"><div class="n">${now.length}</div><div class="l">Due today</div></div>
+    <div class="tile"><div class="n">${state.clients.length}</div><div class="l">Clients</div></div>
+    <div class="tile"><div class="n">${ap ? money(ap) : "$0"}</div><div class="l">Monthly premium sold</div></div>
+  </div>
 
-    ${rows.length === 0 ? `<div class="empty">
-        <div class="big">${q ? "No match." : "Nobody open."}</div>
-        <div style="margin-bottom:${q ? "0" : "16px"}">${q
-          ? "Nobody in the book matches that search."
-          : (state.clients.length
-              ? "Everyone in your book is sold. They are on the Sold tab."
-              : "Add someone, or convert a lead over from the Leads tab.")}</div>
-        ${q ? "" : `<button class="btn green" data-act="new">${state.clients.length ? "Add a client" : "Add your first client"}</button>`}
-      </div>`
-    : bookTable(rows)}
-  </section>`;
+  ${(board + soon.length) ? legend() : ""}
+  ${callBlock("Overdue", late, "late")}
+  ${callBlock("Due today", now, "now")}
+  ${callBlock("Next seven days", soon, "soon")}
+
+  ${(board + soon.length) === 0 ? `<div class="empty">
+      <div class="big">Nothing on the board.</div>
+      <div style="margin-bottom:16px">${state.clients.length
+        ? "No calls due in the next seven days. Everything is where it should be."
+        : "Add a client with a sale date and a start date, and the calls book themselves."}</div>
+      <button class="btn green" data-act="new">New client</button>
+    </div>` : ""}`;
 }
 
-/* ---------- SOLD: the closed book ---------- */
-function soldView() {
+/* ---------- PIPELINE: leads and the book, one page ---------- */
+function pipelineView() {
   const q = state.search.toLowerCase().trim();
-  const sold = state.clients.filter(isSold);
-  const rows = q ? sold.filter(c => matches(c, q)) : sold;
 
-  const ap = sold.reduce((s,c) => s + (Number(c.monthly_premium) || 0), 0);
-  const withCalls = sold.filter(c => nextCallFor(c.id)).length;
+  /* ----- the leads half ----- */
+  const workable = state.leads.filter(isWorkable);
+  const leadRows = state.leads.filter(l => {
+    if (state.leadFilter === "open" && !isWorkable(l)) return false;
+    if (state.leadFilter === "dead" && isWorkable(l))  return false;
+    if (!q) return true;
+    return `${l.full_name} ${l.phone} ${l.city} ${l.source}`.toLowerCase().includes(q);
+  }).sort((a,b) => {
+    const av = a.callback_at || "9999-99-99", bv = b.callback_at || "9999-99-99";
+    if (av !== bv) return av < bv ? -1 : 1;
+    return (a.full_name || "").localeCompare(b.full_name || "");
+  });
+  const leadChips = [["open","Working"],["dead","Closed out"],["all","Everyone"]];
+
+  /* ----- the client half ----- */
+  const clientRows = state.clients.filter(c => {
+    if (state.bookFilter === "sold" && !isSold(c)) return false;
+    if (state.bookFilter === "open" && isSold(c))  return false;
+    if (!q) return true;
+    return matches(c, q);
+  });
+  const bookChips = [["all","Everyone"],["sold","Sold"],["open","No sale yet"]];
+  const sold = state.clients.filter(isSold);
+  const ap = sold.reduce((t,c) => t + (Number(c.monthly_premium) || 0), 0);
 
   return `
   <div class="page-head">
-    <h2 class="display">Sold.</h2>
-    <p class="sub">${sold.length} polic${sold.length===1?"y":"ies"}${
-      ap ? ` &middot; ${money(ap)}/mo &middot; ${money(ap*12)} annual` : ""}${
-      withCalls ? ` &middot; ${withCalls} with a call booked` : ""}.</p>
+    <h2 class="display">Pipeline.</h2>
+    <p class="sub">${workable.length} lead${workable.length===1?"":"s"} worth a call &middot; ${
+      state.clients.length} client${state.clients.length===1?"":"s"} &middot; ${sold.length} sold${
+      ap ? ` &middot; ${money(ap)}/mo` : ""}.</p>
+  </div>
+
+  <div class="toolbar" style="margin-bottom:22px">
+    <input class="input" placeholder="Search leads and clients\u2026" value="${esc(state.search)}" data-act="search">
+    <span class="spacer"></span>
+    <button class="btn green sm" data-act="newlead">New lead</button>
+    <button class="btn green sm" data-act="new">New client</button>
   </div>
 
   <section class="section">
-    <div class="section-head"><h3>${q ? "Found" : "The book"}</h3><span class="count">${rows.length}</span></div>
+    <div class="section-head"><h3>Leads</h3><span class="count">${leadRows.length}</span></div>
+    ${q ? "" : (state.importRows ? importReview() : importDrop("leads"))}
     <div class="toolbar">
-      <input class="input" placeholder="Search name, phone, carrier\u2026" value="${esc(state.search)}" data-act="search">
+      <div class="chips">${leadChips.map(([v,l]) =>
+        `<button class="chip ${state.leadFilter===v?"on":""}" data-act="leadfilter" data-v="${v}">${l}</button>`).join("")}</div>
+      <span class="spacer"></span>
+      <button class="btn ghost sm" data-act="exportleads">Export CSV</button>
+    </div>
+    ${leadRows.length === 0
+      ? `<div class="empty"><div class="big">${q ? "No lead matches." : "No leads yet."}</div>
+           <div>${q ? "Nothing in the lead sheet matches that search."
+                    : "Drop a screenshot of a lead table above, or add one by hand."}</div></div>`
+      : leadTable(leadRows)}
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h3>The book</h3><span class="count">${clientRows.length}</span></div>
+    ${q ? "" : importDrop("client")}
+    <div class="toolbar">
+      <div class="chips">${bookChips.map(([v,l]) =>
+        `<button class="chip ${state.bookFilter===v?"on":""}" data-act="bookfilter" data-v="${v}">${l}</button>`).join("")}</div>
       <span class="spacer"></span>
       <button class="btn ghost sm" data-act="export">Export CSV</button>
     </div>
-
-    ${rows.length === 0 ? `<div class="empty">
-        <div class="big">${q ? "No match." : "Nothing sold yet."}</div>
-        <div>${q ? "Nobody sold matches that search."
-                 : "The moment you put a sale date on a client, they land here and the database books their calls."}</div>
-      </div>`
-    : bookTable(rows)}
+    ${clientRows.length === 0
+      ? `<div class="empty"><div class="big">${q ? "No client matches." : "No clients yet."}</div>
+           <div style="margin-bottom:16px">${q ? "Nobody in the book matches that search."
+                    : "Sell one, or convert a lead from the sheet above."}</div>
+           ${q ? "" : `<button class="btn green" data-act="new">Add your first client</button>`}</div>`
+      : bookTable(clientRows)}
   </section>`;
 }
 
@@ -1183,90 +1229,36 @@ function ordinal(n){
 }
 
 /* ---------- LEADS (the list and the callbacks are one page) ---------- */
-function leadsView() {
-  const workable = state.leads.filter(isWorkable);
-  const dueLate  = workable.filter(l => l.callback_at && daysBetween(l.callback_at) <  0);
-  const dueNow   = workable.filter(l => l.callback_at && daysBetween(l.callback_at) === 0);
-  const due      = dueLate.length + dueNow.length;
-
-  const q = state.search.toLowerCase().trim();
-  const rows = state.leads.filter(l => {
-    if (state.leadFilter === "open" && !isWorkable(l)) return false;
-    if (state.leadFilter === "dead" && isWorkable(l))  return false;
-    if (!q) return true;
-    return `${l.full_name} ${l.phone} ${l.city} ${l.source}`.toLowerCase().includes(q);
-  }).sort((a,b) => {
-    // soonest callback first, then everyone with no callback set
-    const av = a.callback_at || "9999-99-99", bv = b.callback_at || "9999-99-99";
-    if (av !== bv) return av < bv ? -1 : 1;
-    return (a.full_name || "").localeCompare(b.full_name || "");
-  });
-
-  const chips = [["open","Working"],["dead","Closed out"],["all","Everyone"]];
-
-  return `
-  <div class="page-head">
-    <h2 class="display">Leads</h2>
-    <p class="sub">${workable.length} still worth a call, out of ${state.leads.length}${
-      due ? ` &middot; ${due} to call back now` : " &middot; nothing due"}.</p>
-  </div>
-
-  ${state.importRows ? importReview() : importDrop("leads")}
-
-  ${due ? `<div class="banner ${dueLate.length ? "hot" : ""}">
-    <div class="bignum num">${due}</div>
-    <div class="btext">
-      <div class="bhead">${dueLate.length
-        ? `${dueLate.length} callback${dueLate.length===1?"":"s"} overdue${dueNow.length ? `, ${dueNow.length} due today` : ""}.`
-        : `${dueNow.length} callback${dueNow.length===1?"":"s"} due today.`}</div>
-      <div class="bsub">They are at the top of the list, marked in red.</div>
-    </div>
-  </div>` : ""}
-
-  ${state.importRows ? "" : `
-    <div class="toolbar">
-      <input class="input" placeholder="Search name, phone, city…" value="${esc(state.search)}" data-act="search">
-      <div class="chips">${chips.map(([v,l]) =>
-        `<button class="chip ${state.leadFilter===v?"on":""}" data-act="leadfilter" data-v="${v}">${l}</button>`).join("")}</div>
-      <span class="spacer"></span>
-      <button class="btn ghost sm" data-act="exportleads">Export CSV</button>
-      <button class="btn green sm" data-act="newlead">Add by hand</button>
-    </div>
-  `}
-
-  ${state.importRows ? "" : rows.length === 0 ? `<div class="empty">
-      <div class="big">${q ? "No match." : "No leads yet."}</div>
-      <div>${q ? "Nobody matches that search."
-        : "Drop a screenshot of your lead table above and they will appear here."}</div>
-    </div>`
-  : `<div class="table-wrap"><table>
-      <thead><tr>
-        <th>Lead</th><th>Phone</th><th>Call back</th><th>Status</th>
-        <th>City</th><th class="r">Calls</th><th>Last note</th><th></th>
-      </tr></thead>
-      <tbody>${rows.map(l => {
-        const n = l.callback_at ? daysBetween(l.callback_at) : null;
-        const late = n !== null && n < 0;
-        const today = n === 0;
-        const note = l.callback_note || l.notes || "";
-        return `<tr data-act="openlead" data-id="${l.id}">
-          <td><strong>${esc((l.full_name||"").trim() || "No name")}</strong>
-            ${l.date_of_birth ? `<div style="font-size:12px;color:var(--txt-3)">age ${age(l.date_of_birth)}</div>` : ""}</td>
-          <td>${l.phone ? esc(l.phone) : `<span style="color:var(--red)">none</span>`}</td>
-          <td>${l.callback_at
-            ? `<span style="color:${late?"var(--red)":today?"var(--blue-hot)":"inherit"};font-weight:${late||today?700:400}">${esc(relDay(l.callback_at))}</span>
-               <div style="font-size:12px;color:var(--txt-3)">${esc(prettyDate(l.callback_at))}</div>`
-            : `<span style="color:var(--txt-3)">not set</span>`}</td>
-          <td><span class="stage"><span class="dot ${
-              l.status==="converted" ? "s-issued" :
-              l.status==="working"   ? "s-contacted" :
-              l.status==="new"       ? "s-new" : "s-lost"}"></span>${esc(LEAD_STATUS[l.status])}</span></td>
-          <td>${l.city ? esc(l.city) + (l.state ? ", " + esc(l.state) : "") : "—"}</td>
-          <td class="r">${l.call_count || 0}</td>
-          <td style="max-width:280px;color:var(--txt-3);font-size:13px">${esc(note.length > 70 ? note.slice(0,70) + "…" : note) || "—"}</td>
-          <td class="r">${l.phone ? `<a class="btn green sm" href="${telHref(l.phone)}" data-act="dialLead" data-id="${l.id}">Call</a>` : ""}</td>
-        </tr>`;
-      }).join("")}</tbody></table></div>`}`;
+/* ---------- the lead sheet, used by Pipeline ---------- */
+function leadTable(rows) {
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Lead</th><th>Phone</th><th>Call back</th><th>Status</th>
+      <th>City</th><th class="r">Calls</th><th>Last note</th><th></th>
+    </tr></thead>
+    <tbody>${rows.map(l => {
+      const n = l.callback_at ? daysBetween(l.callback_at) : null;
+      const late = n !== null && n < 0;
+      const today = n === 0;
+      const note = l.callback_note || l.notes || "";
+      return `<tr data-act="openlead" data-id="${l.id}">
+        <td><strong>${esc((l.full_name||"").trim() || "No name")}</strong>
+          ${l.date_of_birth ? `<div style="font-size:12px;color:var(--txt-3)">age ${age(l.date_of_birth)}</div>` : ""}</td>
+        <td>${l.phone ? esc(l.phone) : `<span style="color:var(--red)">none</span>`}</td>
+        <td>${l.callback_at
+          ? `<span style="color:${late?"var(--red)":today?"var(--blue-hot)":"inherit"};font-weight:${late||today?700:400}">${esc(relDay(l.callback_at))}</span>
+             <div style="font-size:12px;color:var(--txt-3)">${esc(prettyDate(l.callback_at))}</div>`
+          : `<span style="color:var(--txt-3)">not set</span>`}</td>
+        <td><span class="stage"><span class="dot ${
+            l.status==="converted" ? "s-issued" :
+            l.status==="working"   ? "s-contacted" :
+            l.status==="new"       ? "s-new" : "s-lost"}"></span>${esc(LEAD_STATUS[l.status])}</span></td>
+        <td>${l.city ? esc(l.city) + (l.state ? ", " + esc(l.state) : "") : "\u2014"}</td>
+        <td class="r">${l.call_count || 0}</td>
+        <td style="max-width:280px;color:var(--txt-3);font-size:13px">${esc(note.length > 70 ? note.slice(0,70) + "\u2026" : note) || "\u2014"}</td>
+        <td class="r">${l.phone ? `<a class="btn green sm" href="${telHref(l.phone)}" data-act="dialLead" data-id="${l.id}">Call</a>` : ""}</td>
+      </tr>`;
+    }).join("")}</tbody></table></div>`;
 }
 
 /* ---------- screenshot import ---------- */
@@ -1502,11 +1494,20 @@ function clientModal() {
           <label class="field"><span>Date of sale</span><input class="input" name="sale_date" type="date" value="${esc(c.sale_date||"")}"></label>
           <label class="field"><span>Start date</span><input class="input" name="policy_start_date" type="date" value="${esc(c.policy_start_date||"")}"></label>
         </div>
-        <p style="font-size:12.5px;color:var(--txt-3);margin:-4px 0 16px;line-height:1.55">
-          Both dates set the whole call schedule going: the draft call ${PRE_DRAFT_DAYS} days
-          before the first draft, the confirm call after it, the 3/6/9/12 month checks,
-          and their birthday. A date of sale is what counts the deal as sold.
-        </p>
+        ${(() => {
+          if (!c.policy_start_date) return `<p style="font-size:12.5px;color:var(--txt-3);margin:-4px 0 16px;line-height:1.55">
+            These two dates set the whole call schedule going. <strong>Start date is the day they pay.</strong>
+            Put it in and the calls book themselves: ${PRE_DRAFT_DAYS} days before it to make sure the money is there,
+            2 days after to confirm it cleared, then 3, 6, 9 and 12 months, plus their birthday.
+            A date of sale is what counts the deal as sold.</p>`;
+          const st = parseISO(c.policy_start_date);
+          return `<div class="hint">
+            They pay <strong>${esc(prettyDate(c.policy_start_date))}</strong>, and the ${ordinal(st.getDate())} of every month after.
+            <br>Call to make sure the money is there: <strong>${esc(prettyDate(isoPlus(-PRE_DRAFT_DAYS, st)))}</strong>
+            &nbsp;&middot;&nbsp; call to confirm it cleared: <strong>${esc(prettyDate(isoPlus(2, st)))}</strong>
+            ${c.sale_date ? "" : `<br><span style="color:var(--gold)">No date of sale yet, so nothing is booked. Add one and these calls appear.</span>`}
+          </div>`;
+        })()}
         <div class="grid2">
           <label class="field"><span>Carrier</span><input class="input" name="carrier" value="${esc(c.carrier)}"></label>
           <label class="field"><span>Policy number</span><input class="input" name="policy_number" value="${esc(c.policy_number)}"></label>
@@ -1516,11 +1517,6 @@ function clientModal() {
           <label class="field"><span>Term (years)</span><input class="input" name="term_years" type="number" min="1" max="99" value="${c.term_years ?? ""}" placeholder="20, or blank for whole life"></label>
           <label class="field"><span>Monthly premium</span><input class="input" name="monthly_premium" type="number" step="0.01" value="${c.monthly_premium ?? ""}"></label>
         </div>
-        ${c.policy_start_date ? (() => {
-          const s = parseISO(c.policy_start_date);
-          return `<p class="hint">The first payment comes out <strong>${esc(prettyDate(c.policy_start_date))}</strong> — the day the policy starts — and the ${ordinal(s.getDate())} of every month after that.
-            The call to make sure the money is there lands <strong>${esc(prettyDate(isoPlus(-4, s)))}</strong>, and the one to confirm it cleared lands <strong>${esc(prettyDate(isoPlus(2, s)))}</strong>.</p>`;
-        })() : ""}
         <label class="field"><span>Underwriting notes</span><textarea class="input" name="health_notes" placeholder="Medications, conditions, tobacco…">${esc(c.health_notes)}</textarea></label>
       </fieldset>
 
@@ -1750,6 +1746,7 @@ document.addEventListener("click", async (e) => {
     case "export": return exportCSV();
     case "exportleads": return exportLeadsCSV();
     case "leadfilter": state.leadFilter = el.dataset.v; return render();
+    case "bookfilter": state.bookFilter = el.dataset.v; return render();
     case "toggleimport": state.showImport = !state.showImport; state.importError = null; return render();
 
     case "newlead":
@@ -1985,9 +1982,9 @@ async function saveClient(form) {
 
     const justSold = !wasSold && !!row.sale_date;
     if (justSold && row.policy_start_date) {
-      flash(`Saved. ${row.full_name} moved to the Sold tab — the draft call and the 3, 6, 9 and 12 month checks are booked.`);
+      flash(`Saved. ${row.full_name} counts as sold — the draft call and the 3, 6, 9 and 12 month checks are booked.`);
     } else if (justSold) {
-      flash(`Saved. ${row.full_name} moved to the Sold tab. Add a policy start date and a draft day to get the calls booked.`);
+      flash(`Saved. ${row.full_name} counts as sold. Add a policy start date to get the calls booked.`);
     } else if (row.policy_start_date && row.sale_date) {
       flash(`Saved. Persistency calls booked around the ${prettyDate(row.policy_start_date)} start date.`);
     } else {
@@ -2061,7 +2058,7 @@ async function readScreenshot(file) {
     if (DEMO_MODE) {
       await new Promise(r => setTimeout(r, 900));
       state.importBusy = false;
-      if (state.view === "clients") return takeClientSheet({ ...DEMO_CLIENT }, true);
+      if (state.view === "today" || state.view === "pipeline") return takeClientSheet({ ...DEMO_CLIENT }, true);
       state.importRows = DEMO_ROWS.map(r => ({ ...r }));
       return render();
     }
@@ -2124,7 +2121,7 @@ function takeClientSheet(c, isDemo) {
   };
   state.activities = [];
   state.importRows = null;
-  state.view = "clients";
+  state.view = "today";
   state.sheetRead = true;
   render();
   flash(isDemo
@@ -2184,8 +2181,10 @@ function exportCSV() {
                 "sale_date","policy_start_date","carrier","policy_number",
                 "coverage_amount","term_years","monthly_premium","draft_day","health_notes","notes"];
   const q = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const onlySold = state.view === "sold";
-  const list = onlySold ? state.clients.filter(isSold) : state.clients;
+  const onlySold = state.bookFilter === "sold";
+  const list = onlySold ? state.clients.filter(isSold)
+              : state.bookFilter === "open" ? state.clients.filter(c => !isSold(c))
+              : state.clients;
   const csv = [cols.join(",")].concat(list.map(c => cols.map(k => q(c[k])).join(","))).join("\r\n");
   const url = URL.createObjectURL(new Blob(["﻿"+csv], { type:"text/csv;charset=utf-8" }));
   const a = document.createElement("a");
