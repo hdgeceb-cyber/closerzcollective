@@ -2213,7 +2213,14 @@ async function readScreenshot(file) {
     render();
   } catch (err) {
     state.importBusy = false;
-    state.importError = err.message || "Could not read that screenshot.";
+    let msg = err.message || "Could not read that screenshot.";
+    // the function cannot know who is asking; the manager needs the real instruction, not "ask your manager"
+    if (/not switched on yet/i.test(msg) && state.profile && state.profile.role === "admin") {
+      msg = "Photo reading needs an Anthropic API key before it will work. "
+          + "Get one at console.anthropic.com, then in Supabase go to Edge Functions \u2192 Secrets "
+          + "and add ANTHROPIC_API_KEY. Nothing else to change \u2014 it starts working straight away.";
+    }
+    state.importError = msg;
     render();
   }
 }
