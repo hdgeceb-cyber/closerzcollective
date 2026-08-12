@@ -628,7 +628,8 @@ const LEAD_STATUS = {
 /* every call has exactly one colour. The key is the slug used in CSS: .call.k-<key> / .tag.k-<key> */
 const KINDS = {
   pre:    { label: "Draft call",    colour: "#FF3B30" },
-  post:   { label: "Confirm draft", colour: "#34C759" },
+  // retired Aug 12 — no longer booked. Kept so any call booked before then still renders.
+  post:   { label: "Confirm draft", colour: "#34C759", retired: true },
   m3:     { label: "3 month",       colour: "#4C8DFF" },
   m6:     { label: "6 month",       colour: "#14B8C4" },
   m9:     { label: "9 month",       colour: "#A855F7" },
@@ -651,7 +652,7 @@ function kindTag(r) {
   return [k, KINDS[k].label];
 }
 function legend() {
-  return `<div class="legend">${Object.entries(KINDS).map(([k,v]) =>
+  return `<div class="legend">${Object.entries(KINDS).filter(([,v]) => !v.retired).map(([k,v]) =>
     `<span><i style="background:${v.colour}"></i>${esc(v.label)}</span>`).join("")}</div>`;
 }
 
@@ -1150,14 +1151,12 @@ function banner(late, now) {
 
   const n = k => all.filter(r => r.kind === k).length;
   const draft     = n("pre_draft");
-  const confirm   = n("post_draft");
   const milestone = n("milestone");
   const bday      = n("birthday");
-  const plain     = all.length - draft - confirm - milestone - bday;
+  const plain     = all.length - draft - milestone - bday;
 
   const bits = [];
   if (draft)     bits.push(`<strong>${draft}</strong> before a first draft`);
-  if (confirm)   bits.push(`<strong>${confirm}</strong> to confirm a draft cleared`);
   if (milestone) bits.push(`<strong>${milestone}</strong> persistency check${milestone>1?"s":""}`);
   if (bday)      bits.push(`<strong>${bday}</strong> birthday${bday>1?"s":""}`);
   if (plain)     bits.push(`<strong>${plain}</strong> follow-up${plain>1?"s":""}`);
@@ -1166,7 +1165,7 @@ function banner(late, now) {
   const head = hot
     ? `${late.length} ${late.length === 1 ? "call is" : "calls are"} overdue.`
     : `${now.length} ${now.length === 1 ? "call" : "calls"} due today.`;
-  const money = draft + confirm > 0
+  const money = draft > 0
     ? ` The draft calls are the ones that decide whether you keep the commission.`
     : ``;
 
@@ -1437,13 +1436,12 @@ function teamView() {
 function startWhen(startISO) {
   if (!startISO) return `<p style="font-size:12.5px;color:var(--txt-3);margin:-4px 0 16px;line-height:1.55">
     <strong>The start date is the day they pay.</strong> Put it in and the calls book themselves:
-    ${PRE_DRAFT_DAYS} days before it to make sure the money is there, 2 days after to confirm it cleared,
-    then 3, 6, 9 and 12 months, plus their birthday.</p>`;
+    ${PRE_DRAFT_DAYS} days before it to make sure the money is there, then 3, 6, 9 and 12 months in,
+    plus their birthday.</p>`;
   const st = parseISO(startISO);
   return `<div class="hint">
     They pay <strong>${esc(prettyDate(startISO))}</strong>, and the ${ordinal(st.getDate())} of every month after.
     <br>Call to make sure the money is there: <strong>${esc(prettyDate(isoPlus(-PRE_DRAFT_DAYS, st)))}</strong>
-    &nbsp;&middot;&nbsp; call to confirm it cleared: <strong>${esc(prettyDate(isoPlus(2, st)))}</strong>
   </div>`;
 }
 
