@@ -1053,7 +1053,7 @@ function todayView() {
     <div class="tile"><div class="n">${ap ? money(ap) : "$0"}</div><div class="l">Monthly premium sold</div></div>
   </div>
 
-  ${(board + soon.length) ? legend() : ""}
+  ${legend()}
   ${callBlock("Overdue", late, "late")}
   ${callBlock("Due today", now, "now")}
   ${callBlock("Next seven days", soon, "soon")}
