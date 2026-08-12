@@ -969,6 +969,7 @@ function shell() {
     ["today","Today", due],
     ["book","Book", 0],
     ["pipeline","Pipeline", cbDue],
+    ["training","Training", 0],
     ...(isAdmin ? [["team","Team", state.pending.filter(p=>p.status==="pending").length]] : [])
   ];
   return `<div class="shell">
@@ -992,6 +993,7 @@ function shell() {
       ${state.view==="team" ? teamView()
         : state.view==="book" ? bookView()
         : state.view==="pipeline" ? pipelineView()
+        : state.view==="training" ? trainingView()
         : todayView()}
     </main>
     <nav class="mobilenav">
@@ -1096,6 +1098,20 @@ function todayView() {
         : "Add a client with a sale date and a start date, and the calls book themselves."}</div>
       <button class="btn green" data-act="new">New client</button>
     </div>` : ""}`;
+}
+
+/* ---------- TRAINING: deliberately empty for now ---------- */
+function trainingView() {
+  return `
+  <div class="page-head">
+    <h2 class="display">Training.</h2>
+    <p class="sub">Nothing in here yet.</p>
+  </div>
+
+  <div class="empty">
+    <div class="big">Coming soon.</div>
+    <div>This is where the training will live.</div>
+  </div>`;
 }
 
 /* ---------- BOOK: every client, colour coded on where they stand ---------- */
