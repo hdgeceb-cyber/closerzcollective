@@ -1433,6 +1433,20 @@ function teamView() {
 }
 
 /* ---------- CLIENT MODAL ---------- */
+/* what the start date means, in plain language. Updates live as the date is typed. */
+function startWhen(startISO) {
+  if (!startISO) return `<p style="font-size:12.5px;color:var(--txt-3);margin:-4px 0 16px;line-height:1.55">
+    <strong>The start date is the day they pay.</strong> Put it in and the calls book themselves:
+    ${PRE_DRAFT_DAYS} days before it to make sure the money is there, 2 days after to confirm it cleared,
+    then 3, 6, 9 and 12 months, plus their birthday.</p>`;
+  const st = parseISO(startISO);
+  return `<div class="hint">
+    They pay <strong>${esc(prettyDate(startISO))}</strong>, and the ${ordinal(st.getDate())} of every month after.
+    <br>Call to make sure the money is there: <strong>${esc(prettyDate(isoPlus(-PRE_DRAFT_DAYS, st)))}</strong>
+    &nbsp;&middot;&nbsp; call to confirm it cleared: <strong>${esc(prettyDate(isoPlus(2, st)))}</strong>
+  </div>`;
+}
+
 function clientModal() {
   const c = state.openClient;
   const isNew = !c.id;
@@ -1443,7 +1457,7 @@ function clientModal() {
     <div class="modal-head">
       <div>
         <h3>${isNew ? "New client" : esc((c.full_name || "").trim() || "Client")}</h3>
-        <div class="sub">${isNew ? "Name and phone are enough to start."
+        <div class="sub">${isNew ? "Name, phone and the start date. Everything else can wait."
           : `${isSold(c) ? "Sold " + prettyDate(c.sale_date) : "No sale yet"}${c.date_of_birth?` &middot; age ${age(c.date_of_birth)}`:""}${!mine?" &middot; another agent's client":""}`}</div>
       </div>
       <button class="x" data-act="close">&times;</button>
@@ -1465,69 +1479,20 @@ function clientModal() {
           <label class="field"><span>Date of birth</span>
             <input class="input" name="date_of_birth" type="date" value="${esc(c.date_of_birth||"")}"></label>
         </div>
-        <div class="grid2">
-          <label class="field"><span>Phone number</span><input class="input" name="phone" type="tel" value="${esc(c.phone)}"></label>
-          <label class="field"><span>Email</span><input class="input" name="email" type="email" value="${esc(c.email)}"></label>
-        </div>
-        <label class="field"><span>Address</span><input class="input" name="street" value="${esc(c.street)}"></label>
-        <div class="grid3">
-          <label class="field"><span>City</span><input class="input" name="city" value="${esc(c.city)}"></label>
-          <label class="field"><span>State</span><input class="input" name="state" maxlength="2" value="${esc(c.state)}"></label>
-          <label class="field"><span>ZIP</span><input class="input" name="zip" value="${esc(c.zip)}"></label>
-        </div>
-        <div class="grid3">
-          <label class="field"><span>Height</span><input class="input" name="height" placeholder="5&apos;7&quot;" value="${esc(c.height)}"></label>
-          <label class="field"><span>Weight</span><input class="input" name="weight" placeholder="168 lb" value="${esc(c.weight)}"></label>
-          <label class="field"><span>SSN &mdash; last 4</span>
-            <input class="input" name="ssn_last4" inputmode="numeric" maxlength="4" pattern="[0-9]{4}"
-                   placeholder="4821" value="${esc(c.ssn_last4||"")}"></label>
-        </div>
-        <p class="ssn-note">
-          Last four only. Do not put a full Social Security number or bank account
-          in here &mdash; those belong in the carrier&rsquo;s application and nowhere else.
-          The database will reject anything longer than four digits.
-        </p>
+        <label class="field"><span>Phone number</span><input class="input" name="phone" type="tel" value="${esc(c.phone)}"></label>
       </fieldset>
 
       <fieldset class="fieldset"><legend>The policy</legend>
-        <div class="grid2">
-          <label class="field"><span>Date of sale</span><input class="input" name="sale_date" type="date" value="${esc(c.sale_date||"")}"></label>
-          <label class="field"><span>Start date</span><input class="input" name="policy_start_date" type="date" value="${esc(c.policy_start_date||"")}"></label>
-        </div>
-        ${(() => {
-          if (!c.policy_start_date) return `<p style="font-size:12.5px;color:var(--txt-3);margin:-4px 0 16px;line-height:1.55">
-            These two dates set the whole call schedule going. <strong>Start date is the day they pay.</strong>
-            Put it in and the calls book themselves: ${PRE_DRAFT_DAYS} days before it to make sure the money is there,
-            2 days after to confirm it cleared, then 3, 6, 9 and 12 months, plus their birthday.
-            A date of sale is what counts the deal as sold.</p>`;
-          const st = parseISO(c.policy_start_date);
-          return `<div class="hint">
-            They pay <strong>${esc(prettyDate(c.policy_start_date))}</strong>, and the ${ordinal(st.getDate())} of every month after.
-            <br>Call to make sure the money is there: <strong>${esc(prettyDate(isoPlus(-PRE_DRAFT_DAYS, st)))}</strong>
-            &nbsp;&middot;&nbsp; call to confirm it cleared: <strong>${esc(prettyDate(isoPlus(2, st)))}</strong>
-            ${c.sale_date ? "" : `<br><span style="color:var(--gold)">No date of sale yet, so nothing is booked. Add one and these calls appear.</span>`}
-          </div>`;
-        })()}
+        <label class="field"><span>Start date</span>
+          <input class="input" name="policy_start_date" type="date" value="${esc(c.policy_start_date||"")}"></label>
+        <div id="startwhen">${startWhen(c.policy_start_date)}</div>
         <div class="grid2">
           <label class="field"><span>Carrier</span><input class="input" name="carrier" value="${esc(c.carrier)}"></label>
           <label class="field"><span>Policy number</span><input class="input" name="policy_number" value="${esc(c.policy_number)}"></label>
         </div>
-        <div class="grid3">
+        <div class="grid2">
           <label class="field"><span>Face amount</span><input class="input" name="coverage_amount" type="number" step="0.01" value="${c.coverage_amount ?? ""}"></label>
-          <label class="field"><span>Term (years)</span><input class="input" name="term_years" type="number" min="1" max="99" value="${c.term_years ?? ""}" placeholder="20, or blank for whole life"></label>
           <label class="field"><span>Monthly premium</span><input class="input" name="monthly_premium" type="number" step="0.01" value="${c.monthly_premium ?? ""}"></label>
-        </div>
-        <label class="field"><span>Underwriting notes</span><textarea class="input" name="health_notes" placeholder="Medications, conditions, tobacco…">${esc(c.health_notes)}</textarea></label>
-      </fieldset>
-
-      <fieldset class="fieldset"><legend>Beneficiary</legend>
-        <div class="grid2">
-          <label class="field"><span>Name</span><input class="input" name="beneficiary" value="${esc(c.beneficiary)}"></label>
-          <label class="field"><span>Phone number</span><input class="input" name="beneficiary_phone" type="tel" value="${esc(c.beneficiary_phone)}"></label>
-        </div>
-        <div class="grid2">
-          <label class="field"><span>Second beneficiary</span><input class="input" name="beneficiary2" value="${esc(c.beneficiary2)}"></label>
-          <label class="field"><span>Phone number</span><input class="input" name="beneficiary2_phone" type="tel" value="${esc(c.beneficiary2_phone)}"></label>
         </div>
       </fieldset>
 
@@ -1860,6 +1825,13 @@ document.addEventListener("drop", (e) => {
   if (f && f.type.startsWith("image/")) readScreenshot(f);
 });
 
+/* say the call dates back to them the moment the start date is entered */
+document.addEventListener("input", (e) => {
+  if (e.target.name !== "policy_start_date") return;
+  const box = document.getElementById("startwhen");
+  if (box) box.innerHTML = startWhen(e.target.value);
+});
+
 document.addEventListener("input", (e) => {
   const el = e.target.closest("[data-act='search']");
   if (!el) return;
@@ -1945,20 +1917,21 @@ async function saveClient(form) {
   const isNew = !state.openClient.id;
   const wasSold = isSold(state.openClient);
 
+  /* Only the fields actually on the form are sent. Anything not on the form
+     (address, beneficiary, SSN last 4, underwriting notes) is left exactly as
+     it is in the database rather than blanked out. */
   const row = {
     ...f,
     full_name:         (f.full_name || "").trim(),
     date_of_birth:     f.date_of_birth     || null,
-    sale_date:         f.sale_date         || null,
     policy_start_date: f.policy_start_date || null,
     coverage_amount:   f.coverage_amount   === "" ? null : Number(f.coverage_amount),
     monthly_premium:   f.monthly_premium   === "" ? null : Number(f.monthly_premium),
     // the start date IS the day they pay, so the monthly draft day follows from it
     draft_day:         f.policy_start_date ? parseISO(f.policy_start_date).getDate() : null,
-    term_years:        f.term_years        === "" ? null : Number(f.term_years),
-    ssn_last4:         (f.ssn_last4 || "").trim() === "" ? null : String(f.ssn_last4).trim(),
-    state:             (f.state || "").toUpperCase()
   };
+  // a client you add is a client you sold: dated the day you add them
+  if (isNew) row.sale_date = todayISO();
 
   state.busy = true; render();
   try {
@@ -1982,9 +1955,9 @@ async function saveClient(form) {
 
     const justSold = !wasSold && !!row.sale_date;
     if (justSold && row.policy_start_date) {
-      flash(`Saved. ${row.full_name} counts as sold — the draft call and the 3, 6, 9 and 12 month checks are booked.`);
+      flash(`Saved. ${row.full_name} is on the book — the draft call and the 3, 6, 9 and 12 month checks are booked.`);
     } else if (justSold) {
-      flash(`Saved. ${row.full_name} counts as sold. Add a policy start date to get the calls booked.`);
+      flash(`Saved. ${row.full_name} is on the book. Add a start date to get their calls booked.`);
     } else if (row.policy_start_date && row.sale_date) {
       flash(`Saved. Persistency calls booked around the ${prettyDate(row.policy_start_date)} start date.`);
     } else {
