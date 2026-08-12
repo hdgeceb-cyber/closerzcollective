@@ -237,6 +237,35 @@ input[type=date].input::-webkit-calendar-picker-indicator{filter:invert(58%) sep
 .tag.k-follow{background:var(--k-follow-w);color:#A7B2C4;        border-color:var(--k-follow-l)}
 .tag.tries{background:var(--red-wash);color:var(--red);border-color:var(--red-line)}
 
+/* ---------- the book: one row per client, stripe says how they are doing ---------- */
+.bookrow{
+  display:flex;align-items:flex-start;gap:14px;padding:14px 17px;
+  background:linear-gradient(180deg,var(--panel),var(--deep));
+  border:1px solid var(--line);border-radius:var(--radius);margin-bottom:8px;
+  border-left:3px solid var(--line-hot);cursor:pointer;
+  transition:border-color .16s ease,box-shadow .16s ease,transform .1s ease;
+}
+.bookrow:hover{border-color:var(--line-hot);box-shadow:0 0 0 1px rgba(46,139,255,.10),0 10px 30px -18px #000;transform:translateY(-1px)}
+.bookrow.st-late   {border-left-color:var(--red);   background:linear-gradient(100deg,rgba(255,77,77,.10),var(--deep) 46%)}
+.bookrow.st-today  {border-left-color:var(--gold);  background:linear-gradient(100deg,rgba(255,194,77,.10),var(--deep) 46%)}
+.bookrow.st-soon   {border-left-color:var(--blue);  background:linear-gradient(100deg,rgba(46,139,255,.10),var(--deep) 46%)}
+.bookrow.st-current{border-left-color:var(--green); background:linear-gradient(100deg,rgba(43,217,138,.08),var(--deep) 46%)}
+.bookrow.st-none   {border-left-color:var(--txt-3)}
+.bookrow .bk-body{flex:1;min-width:0}
+.bookrow .bk-name{font-size:16.5px;font-weight:700;letter-spacing:-.01em;color:#fff;margin-bottom:4px}
+.bookrow .bk-meta{font-size:13px;color:var(--txt-2);display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.bookrow .bk-sub{font-size:13px;color:var(--txt-3);margin-top:6px}
+.bookrow .bk-right{flex-shrink:0;text-align:right}
+.bookrow .bk-prem{font-family:var(--disp);font-style:italic;font-weight:800;font-size:19px;color:#fff;letter-spacing:-.01em}
+.bookrow .bk-prem span{font-family:var(--sans);font-style:normal;font-weight:600;font-size:11px;color:var(--txt-3)}
+
+.tag.st-late   {background:var(--red-wash);color:var(--red);border-color:var(--red-line)}
+.tag.st-today  {background:var(--gold-wash);color:var(--gold);border-color:var(--gold-line)}
+.tag.st-soon   {background:var(--blue-wash);color:var(--blue-hot);border-color:var(--blue-line)}
+.tag.st-current{background:rgba(43,217,138,.10);color:var(--green);border-color:rgba(43,217,138,.30)}
+.tag.st-none   {background:transparent;color:var(--txt-3)}
+@media(max-width:720px){.bookrow{flex-direction:column;gap:10px}.bookrow .bk-right{text-align:left}}
+
 /* the numbers strip */
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:0 0 26px;
   border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--panel)}
@@ -668,7 +697,7 @@ const state = {
   leads: [],
   openLead: null,
   leadFilter: "open",
-  bookFilter: "all",
+  bookState: "all",
   showImport: false,
   importRows: null,      // parsed screenshot, waiting for the agent to confirm
   importBusy: false,
@@ -938,6 +967,7 @@ function shell() {
   const cbDue = state.leads.filter(l => isWorkable(l) && l.callback_at && daysBetween(l.callback_at) <= 0).length;
   const nav = [
     ["today","Today", due],
+    ["book","Book", 0],
     ["pipeline","Pipeline", cbDue],
     ...(isAdmin ? [["team","Team", state.pending.filter(p=>p.status==="pending").length]] : [])
   ];
@@ -960,6 +990,7 @@ function shell() {
       ${isAdmin ? adminScopeBar() : ""}
       ${state.msg ? `<div class="notice ${state.msg.kind}">${esc(state.msg.text)}</div>` : ""}
       ${state.view==="team" ? teamView()
+        : state.view==="book" ? bookView()
         : state.view==="pipeline" ? pipelineView()
         : todayView()}
     </main>
@@ -1067,13 +1098,127 @@ function todayView() {
     </div>` : ""}`;
 }
 
+/* ---------- BOOK: every client, colour coded on where they stand ---------- */
+/* the stripe says how they are doing on their calls; the tag says what the next call is */
+const BOOK_STATES = {
+  late:    { label: "Overdue",         colour: "#FF4D4D", blurb: "a call has gone past due" },
+  today:   { label: "Due today",       colour: "#FFC24D", blurb: "a call is due today" },
+  soon:    { label: "Coming up",       colour: "#2E8BFF", blurb: "a call inside the next 30 days" },
+  current: { label: "All current",     colour: "#2BD98A", blurb: "booked, nothing needed yet" },
+  none:    { label: "Nothing booked",  colour: "#5F708C", blurb: "no calls scheduled at all" },
+};
+
+function bookState(c) {
+  const next = nextCallFor(c.id);
+  if (!next) return { key: "none", next: null, days: null };
+  const d = daysBetween(next.due_date);
+  if (d < 0)  return { key: "late",    next, days: d };
+  if (d === 0) return { key: "today",  next, days: d };
+  if (d <= 30) return { key: "soon",   next, days: d };
+  return { key: "current", next, days: d };
+}
+const BOOK_ORDER = { late: 0, today: 1, soon: 2, current: 3, none: 4 };
+
+function bookKey() {
+  return `<div class="legend">${Object.entries(BOOK_STATES).map(([k,v]) =>
+    `<span><i style="background:${v.colour}"></i>${esc(v.label)}</span>`).join("")}</div>`;
+}
+
+function bookView() {
+  const q = state.search.toLowerCase().trim();
+
+  const all = state.clients.map(c => ({ c, st: bookState(c) }));
+  const counts = Object.keys(BOOK_STATES).reduce((a,k) => (a[k] = all.filter(x => x.st.key === k).length, a), {});
+
+  let rows = all;
+  if (state.bookState !== "all") rows = rows.filter(x => x.st.key === state.bookState);
+  if (q) rows = rows.filter(x => matches(x.c, q));
+  rows = rows.slice().sort((a,b) => {
+    if (BOOK_ORDER[a.st.key] !== BOOK_ORDER[b.st.key]) return BOOK_ORDER[a.st.key] - BOOK_ORDER[b.st.key];
+    const ad = a.st.next?.due_date || "9999-99-99", bd = b.st.next?.due_date || "9999-99-99";
+    if (ad !== bd) return ad < bd ? -1 : 1;
+    return (a.c.full_name || "").localeCompare(b.c.full_name || "");
+  });
+
+  const sold = state.clients.filter(isSold);
+  const ap = sold.reduce((t,c) => t + (Number(c.monthly_premium) || 0), 0);
+  const chips = [["all","Everyone"]].concat(
+    Object.entries(BOOK_STATES).filter(([k]) => counts[k] > 0).map(([k,v]) => [k, v.label]));
+
+  return `
+  <div class="page-head">
+    <h2 class="display">My book.</h2>
+    <p class="sub">${state.clients.length} client${state.clients.length===1?"":"s"}${
+      ap ? ` &middot; ${money(ap)}/mo &middot; ${money(ap*12)} a year` : ""}${
+      counts.late ? ` &middot; <strong style="color:var(--red)">${counts.late} overdue</strong>` : ""}.</p>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="n ${counts.late?"red":""}">${counts.late}</div><div class="l">Overdue</div></div>
+    <div class="tile"><div class="n">${counts.today}</div><div class="l">Due today</div></div>
+    <div class="tile"><div class="n">${counts.soon}</div><div class="l">Coming up</div></div>
+    <div class="tile"><div class="n">${counts.current + counts.none}</div><div class="l">Nothing needed</div></div>
+  </div>
+
+  ${bookKey()}
+
+  <div class="toolbar" style="margin-bottom:16px">
+    <input class="input" placeholder="Search name, phone, carrier\u2026" value="${esc(state.search)}" data-act="search">
+    <div class="chips">${chips.map(([v,l]) =>
+      `<button class="chip ${state.bookState===v?"on":""}" data-act="bookstate" data-v="${v}">${esc(l)}</button>`).join("")}</div>
+    <span class="spacer"></span>
+    <button class="btn ghost sm" data-act="export">Export CSV</button>
+    <button class="btn green sm" data-act="new">New client</button>
+  </div>
+
+  ${rows.length === 0 ? `<div class="empty">
+      <div class="big">${q ? "No match." : state.clients.length ? "Nobody in that group." : "Your book is empty."}</div>
+      <div style="margin-bottom:${state.clients.length ? "0" : "16px"}">${
+        q ? "Nobody in your book matches that search."
+          : state.clients.length ? "Try Everyone."
+          : "Add your first client and they will show up here with their calls."}</div>
+      ${state.clients.length ? "" : `<button class="btn green" data-act="new">New client</button>`}
+    </div>`
+  : rows.map(({c, st}) => {
+      const v = BOOK_STATES[st.key];
+      const k = st.next ? kindKey(st.next) : null;
+      const tries = Number(st.next?.attempts || 0);
+      const when = st.key === "late"    ? `${Math.abs(st.days)} day${Math.abs(st.days)===1?"":"s"} late`
+                 : st.key === "today"   ? "Due today"
+                 : st.next              ? `in ${st.days} day${st.days===1?"":"s"}`
+                 : "No calls booked";
+      return `<div class="bookrow st-${st.key}" data-act="open" data-id="${c.id}">
+        <div class="bk-body">
+          <div class="bk-name">${esc((c.full_name || "").trim() || "Unnamed")}</div>
+          <div class="bk-meta">
+            <span class="tag st-${st.key}">${esc(v.label)}</span>
+            ${k ? `<span class="tag k-${k}">${esc(KINDS[k].label)}</span>` : ""}
+            ${tries > 0 ? `<span class="tag tries">no answer ${tries}&times;</span>` : ""}
+            ${c.phone ? `<span>${esc(c.phone)}</span>` : `<span style="color:var(--red)">No phone on file</span>`}
+            ${c.date_of_birth ? `<span>age ${age(c.date_of_birth)}</span>` : ""}
+            ${c.carrier ? `<span>${esc(c.carrier)}</span>` : ""}
+          </div>
+          <div class="bk-sub">${esc(when)}${st.next ? ` &middot; ${esc(prettyDate(st.next.due_date))}` : ""}${
+            isSold(c) ? ` &middot; sold ${esc(prettyDate(c.sale_date))}` : " &middot; no sale date"}${
+            c.policy_start_date ? ` &middot; pays the ${ordinal(parseISO(c.policy_start_date).getDate())}` : ""}</div>
+        </div>
+        <div class="bk-right">
+          ${c.monthly_premium ? `<div class="bk-prem">${money(c.monthly_premium)}<span>/mo</span></div>` : ""}
+          ${c.coverage_amount ? `<div style="font-size:12px;color:var(--txt-3);margin-top:3px">${money(c.coverage_amount)} face</div>` : ""}
+        </div>
+      </div>`;
+    }).join("")}`;
+}
+
 /* ---------- PIPELINE: leads and the book, one page ---------- */
 function pipelineView() {
   const q = state.search.toLowerCase().trim();
-
-  /* ----- the leads half ----- */
   const workable = state.leads.filter(isWorkable);
-  const leadRows = state.leads.filter(l => {
+  const dueLate  = workable.filter(l => l.callback_at && daysBetween(l.callback_at) <  0);
+  const dueNow   = workable.filter(l => l.callback_at && daysBetween(l.callback_at) === 0);
+  const due      = dueLate.length + dueNow.length;
+
+  const rows = state.leads.filter(l => {
     if (state.leadFilter === "open" && !isWorkable(l)) return false;
     if (state.leadFilter === "dead" && isWorkable(l))  return false;
     if (!q) return true;
@@ -1083,66 +1228,44 @@ function pipelineView() {
     if (av !== bv) return av < bv ? -1 : 1;
     return (a.full_name || "").localeCompare(b.full_name || "");
   });
-  const leadChips = [["open","Working"],["dead","Closed out"],["all","Everyone"]];
-
-  /* ----- the client half ----- */
-  const clientRows = state.clients.filter(c => {
-    if (state.bookFilter === "sold" && !isSold(c)) return false;
-    if (state.bookFilter === "open" && isSold(c))  return false;
-    if (!q) return true;
-    return matches(c, q);
-  });
-  const bookChips = [["all","Everyone"],["sold","Sold"],["open","No sale yet"]];
-  const sold = state.clients.filter(isSold);
-  const ap = sold.reduce((t,c) => t + (Number(c.monthly_premium) || 0), 0);
+  const chips = [["open","Working"],["dead","Closed out"],["all","Everyone"]];
 
   return `
   <div class="page-head">
     <h2 class="display">Pipeline.</h2>
-    <p class="sub">${workable.length} lead${workable.length===1?"":"s"} worth a call &middot; ${
-      state.clients.length} client${state.clients.length===1?"":"s"} &middot; ${sold.length} sold${
-      ap ? ` &middot; ${money(ap)}/mo` : ""}.</p>
+    <p class="sub">${workable.length} lead${workable.length===1?"":"s"} still worth a call, out of ${state.leads.length}${
+      due ? ` &middot; ${due} to call back now` : " &middot; nothing due"}. Once they buy, they move to your book.</p>
   </div>
 
-  <div class="toolbar" style="margin-bottom:22px">
-    <input class="input" placeholder="Search leads and clients\u2026" value="${esc(state.search)}" data-act="search">
-    <span class="spacer"></span>
-    <button class="btn green sm" data-act="newlead">New lead</button>
-    <button class="btn green sm" data-act="new">New client</button>
-  </div>
+  ${state.importRows ? importReview() : importDrop("leads")}
 
-  <section class="section">
-    <div class="section-head"><h3>Leads</h3><span class="count">${leadRows.length}</span></div>
-    ${q ? "" : (state.importRows ? importReview() : importDrop("leads"))}
+  ${due ? `<div class="banner ${dueLate.length ? "hot" : ""}">
+    <div class="bignum num">${due}</div>
+    <div class="btext">
+      <div class="bhead">${dueLate.length
+        ? `${dueLate.length} callback${dueLate.length===1?"":"s"} overdue${dueNow.length ? `, ${dueNow.length} due today` : ""}.`
+        : `${dueNow.length} callback${dueNow.length===1?"":"s"} due today.`}</div>
+      <div class="bsub">They are at the top of the list, marked in red.</div>
+    </div>
+  </div>` : ""}
+
+  ${state.importRows ? "" : `
     <div class="toolbar">
-      <div class="chips">${leadChips.map(([v,l]) =>
+      <input class="input" placeholder="Search name, phone, city\u2026" value="${esc(state.search)}" data-act="search">
+      <div class="chips">${chips.map(([v,l]) =>
         `<button class="chip ${state.leadFilter===v?"on":""}" data-act="leadfilter" data-v="${v}">${l}</button>`).join("")}</div>
       <span class="spacer"></span>
       <button class="btn ghost sm" data-act="exportleads">Export CSV</button>
+      <button class="btn green sm" data-act="newlead">Add by hand</button>
     </div>
-    ${leadRows.length === 0
-      ? `<div class="empty"><div class="big">${q ? "No lead matches." : "No leads yet."}</div>
-           <div>${q ? "Nothing in the lead sheet matches that search."
-                    : "Drop a screenshot of a lead table above, or add one by hand."}</div></div>`
-      : leadTable(leadRows)}
-  </section>
+  `}
 
-  <section class="section">
-    <div class="section-head"><h3>The book</h3><span class="count">${clientRows.length}</span></div>
-    ${q ? "" : importDrop("client")}
-    <div class="toolbar">
-      <div class="chips">${bookChips.map(([v,l]) =>
-        `<button class="chip ${state.bookFilter===v?"on":""}" data-act="bookfilter" data-v="${v}">${l}</button>`).join("")}</div>
-      <span class="spacer"></span>
-      <button class="btn ghost sm" data-act="export">Export CSV</button>
-    </div>
-    ${clientRows.length === 0
-      ? `<div class="empty"><div class="big">${q ? "No client matches." : "No clients yet."}</div>
-           <div style="margin-bottom:16px">${q ? "Nobody in the book matches that search."
-                    : "Sell one, or convert a lead from the sheet above."}</div>
-           ${q ? "" : `<button class="btn green" data-act="new">Add your first client</button>`}</div>`
-      : bookTable(clientRows)}
-  </section>`;
+  ${state.importRows ? "" : rows.length === 0 ? `<div class="empty">
+      <div class="big">${q ? "No match." : "No leads yet."}</div>
+      <div>${q ? "Nobody matches that search."
+        : "Drop a screenshot of your lead table above and they will appear here."}</div>
+    </div>`
+  : leadTable(rows)}`;
 }
 
 function banner(late, now) {
@@ -1709,7 +1832,7 @@ document.addEventListener("click", async (e) => {
     case "export": return exportCSV();
     case "exportleads": return exportLeadsCSV();
     case "leadfilter": state.leadFilter = el.dataset.v; return render();
-    case "bookfilter": state.bookFilter = el.dataset.v; return render();
+    case "bookstate":  state.bookState  = el.dataset.v; return render();
     case "toggleimport": state.showImport = !state.showImport; state.importError = null; return render();
 
     case "newlead":
@@ -2152,10 +2275,10 @@ function exportCSV() {
                 "sale_date","policy_start_date","carrier","policy_number",
                 "coverage_amount","term_years","monthly_premium","draft_day","health_notes","notes"];
   const q = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
-  const onlySold = state.bookFilter === "sold";
-  const list = onlySold ? state.clients.filter(isSold)
-              : state.bookFilter === "open" ? state.clients.filter(c => !isSold(c))
-              : state.clients;
+  // export what the Book tab is currently showing
+  const list = state.bookState === "all" ? state.clients
+             : state.clients.filter(c => bookState(c).key === state.bookState);
+  const onlySold = false;
   const csv = [cols.join(",")].concat(list.map(c => cols.map(k => q(c[k])).join(","))).join("\r\n");
   const url = URL.createObjectURL(new Blob(["﻿"+csv], { type:"text/csv;charset=utf-8" }));
   const a = document.createElement("a");
