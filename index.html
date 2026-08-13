@@ -487,6 +487,21 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .pastebox .phint{font-size:12.5px;color:var(--txt-3)}
 .pastebox .phint a{color:var(--txt-2);text-decoration:underline;cursor:pointer}
 .pastebox .phint a:hover{color:var(--blue)}
+/* ---- Training tab: the practice trainer ---- */
+.rep-turn{margin:0 0 16px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.rep-turn:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+.rep-them{background:#191d27;border-left:3px solid var(--gold,#f5a524);border-radius:0 10px 10px 0;padding:11px 14px}
+.rep-lbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gold,#f5a524);margin-bottom:3px}
+.rep-say{font-size:16px;color:#f2e6cf}
+.rep-ta{min-height:60px;margin-top:9px}
+.rep-coach{margin-top:10px;padding:11px 14px;border:1px dashed var(--line-hot);border-radius:10px;background:#10141c}
+.rep-lbl2{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--blue-hot,#57a2ff)}
+.rep-model{color:#dbe6fb;font-size:14.5px;line-height:1.55;margin-top:5px}
+.rep-why{color:var(--txt-3);font-size:12.5px;margin-top:7px}
+.rep-dim{display:flex;align-items:center;gap:12px;margin:9px 0}
+.rep-dim label{flex:1;font-size:14px}
+.rep-dim input[type=range]{flex:1;accent-color:var(--blue)}
+.rep-val{width:30px;text-align:right;font-weight:800;color:var(--blue-hot,#57a2ff)}
 .dz-bar{height:3px;width:220px;margin:0 auto;background:var(--line);border-radius:2px;overflow:hidden}
 .dz-bar span{display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;
   animation:slide 1.1s ease-in-out infinite;box-shadow:0 0 12px var(--blue)}
@@ -719,7 +734,8 @@ const state = {
   authMode: null,        // null | "confirm-sent" | "set-password"
   pendingEmail: "",      // the address we told them to go and check
   msg: null,
-  busy: false
+  busy: false,
+  rep: { pi: 0, beat: 0, revealed: {}, scored: false, scores: null }  // the practice trainer on the Training tab
 };
 
 /* ============================================================
@@ -1112,16 +1128,166 @@ function todayView() {
 }
 
 /* ---------- TRAINING: deliberately empty for now ---------- */
+/* ---------- TRAINING: practice a full call against a real-feeling prospect ----------
+   Every model line is honest technique — the stall-flip, the comfort-based money
+   ask, the two-option price, aligning the draft to their deposit, the pre-draft
+   call. Nothing in here coaches a pretext or a fake authority. */
+const REP_DIMS = ["Open & honesty","Discovery","Building value (honestly)","Objection handling",
+  "Price framing & the ask","Close, draft & pre-draft call","Tone & rapport"];
+
+const REP_PROSPECTS = [
+  { who:"Dolores", age:68, state:"Ohio",
+    meta:"Mailed a card weeks ago · small whole-life already · fixed income · guarded",
+    traits:["Guarded","Has coverage","Fixed income"],
+    beats:[
+      { stage:"Open", them:"Hello? …who's this?",
+        model:"“Hey Dolores — this is [you] with Closers Collective, I’m a licensed final-expense agent. You mailed back a card about covering your final expenses and I’m just following up. Did I catch you okay?”",
+        why:"Warm, first name, honest reason. No department, no pretext." },
+      { stage:"Discovery", them:"I already got a little policy through somebody. I don't know that I need another one.",
+        model:"“That’s good — plenty of folks have nothing, so you’re ahead. Real quick so I’m not wasting your time: do you remember roughly how much that one covers, and who it’s for?”",
+        why:"Acknowledge, don’t fight it. One question keeps you in and finds the gap." },
+      { stage:"Discovery", them:"It's ten thousand, I think. For my daughter. I pay… fifty-something a month?",
+        model:"“Perfect. And is fifty-something comfortable for you each month, or would you rather that number come down a little?”",
+        why:"Comfort-based framing — learn the budget before you ever name a price." },
+      { stage:"Present", them:"Well… what are you even offering me?",
+        model:"“Honest version: for around what you pay now I can likely get you more coverage with a carrier that pays from day one — or keep the ten thousand and lower your payment. Which sounds better?”",
+        why:"Two honest options. The customer picks; you didn’t corner them." },
+      { stage:"Objection", them:"I don't know. I'd want to talk to my daughter first.",
+        model:"“Totally fair — she’s exactly who this protects. Nothing starts today and nothing comes out of your account until a date you and I pick. Let’s just see what you qualify for so you can show her real numbers instead of a maybe. Okay?”",
+        why:"Honor the stall, lower the stakes (and mean ‘nothing starts today’), keep moving." },
+      { stage:"Close", them:"Okay… and when would the payment come out?",
+        model:"“Let’s line it up with the day your check lands so it’s never a squeeze — when do you get paid? …Good, we’ll set it the day after, and I’ll call you a couple days before that first one to make sure it’s all set, so it never lapses.”",
+        why:"Draft aligned to deposit + the pre-draft promise. This is what stops chargebacks." },
+    ],
+    outcome:"She buys if you flipped the daughter stall without steamrolling and aligned the draft to her deposit. Rush her, or name a price before the comfort question, and she says ‘let me think.’" },
+  { who:"Earl", age:72, state:"Georgia",
+    meta:"No coverage · 'healthy, don't need it' · thinks about money as savings",
+    traits:["No coverage","Skeptical","Healthy"],
+    beats:[
+      { stage:"Open", them:"Yeah? Who's this now?",
+        model:"“Earl, it’s [you] with Closers Collective — licensed final-expense agent. You’d sent in a card about final-expense coverage. That still on your radar?”",
+        why:"Name, agency, reason, quick permission check." },
+      { stage:"Discovery", them:"I'm healthy as a horse. I don't think I need it.",
+        model:"“Honestly that’s the best time to lock it in — while you’re healthy the rate’s lowest and nobody can turn you down. If something happened tomorrow, could your family cover a funeral out of pocket without it stinging?”",
+        why:"Reframe health as the reason to buy now; one honest needs question. No fake urgency." },
+      { stage:"Discovery", them:"I mean… probably not without it hurting. What's this run?",
+        model:"“Before I throw a number at you — what would feel comfortable monthly, so I’m shopping in your range and not wasting your time?”",
+        why:"Comfort question before price lets him set the anchor." },
+      { stage:"Present", them:"I don't want to lock money away I can't touch.",
+        model:"“Fair — and this one builds cash value, so what you pay in you can borrow against if you ever need it. It’s protection that isn’t just gone. Does that change it for you?”",
+        why:"Answer the real objection (liquidity) with a true feature, then a tie-down." },
+      { stage:"Objection", them:"How do I even know you're legit?",
+        model:"“Good — you should ask. I’ll text you my name and my producer number right now so you can look me up, and the carrier sends you everything in writing. No pressure from me. Fair?”",
+        why:"Meet the trust question with real, checkable proof — not a fake authority claim." },
+      { stage:"Close", them:"Alright. What happens next?",
+        model:"“We’ll see what you qualify for — few minutes — and set the first payment for a day that works with your check. I’ll call you a couple days ahead of it to confirm the money’s there. Nothing’s a surprise.”",
+        why:"Honest close, draft alignment, pre-draft call." },
+    ],
+    outcome:"Earl buys if you turned ‘I’m healthy’ into the reason to act, answered the liquidity worry honestly, and met the trust question with a real producer number instead of a bluff." },
+  { who:"Brenda", age:65, state:"Texas",
+    meta:"Busy · 'call me back' · warms up fast if you flip the stall",
+    traits:["Busy","Warms up","Price-aware"],
+    beats:[
+      { stage:"Open", them:"I'm actually right in the middle of something.",
+        model:"“No problem at all — real quick before we part ways: you’d sent a card about final-expense coverage. Still looking to get that handled, or did you take care of it already?”",
+        why:"The stall-flip — one foot in the door with a single yes/no question." },
+      { stage:"Discovery", them:"…No, I never did get to it. What is it, like ten minutes?",
+        model:"“Ten, tops. Let me ask — is this to cover the funeral, or to leave a little something behind for family too?”",
+        why:"Set the time expectation, then a discovery question that scopes the need." },
+      { stage:"Present", them:"Just the funeral, I guess. I don't want to overpay.",
+        model:"“Then let’s keep it right-sized. Funerals here run around ten to fifteen thousand — what would feel comfortable monthly to cover that?”",
+        why:"Honest anchor (real burial range), then comfort-based ask." },
+      { stage:"Objection", them:"That's more than I thought. Can we do less?",
+        model:"“Absolutely — we dial the coverage to fit the payment, not the other way around. What number feels right and I’ll build to it?”",
+        why:"Never argue price. Flex coverage to the comfortable payment." },
+      { stage:"Close", them:"Okay, that I can do. When's it come out?",
+        model:"“Let’s set it right after your payday so it’s easy — and I’ll give you a quick call a couple days before the first one to make sure it’s all set.”",
+        why:"Draft alignment + pre-draft promise." },
+    ],
+    outcome:"Brenda buys if you flipped the ‘I’m busy’ cleanly, then flexed the coverage down to her comfortable number instead of defending the price." },
+];
+
+function repSteps(p, beat) {
+  const order = ["Open","Discovery","Present","Objection","Close"];
+  const reached = new Set(p.beats.slice(0, beat + 1).map(b => b.stage));
+  return `<div class="chips" style="margin:4px 0 4px">${order.map(s =>
+    `<span class="chip ${reached.has(s) ? "on" : ""}" style="pointer-events:none">${s}</span>`).join("")}</div>`;
+}
+
 function trainingView() {
+  const p = REP_PROSPECTS[state.rep.pi % REP_PROSPECTS.length];
+  const shown = Math.min(state.rep.beat + 1, p.beats.length);
+  const done = state.rep.beat >= p.beats.length;
+
+  const turns = p.beats.slice(0, shown).map((b, i) => {
+    const rev = state.rep.revealed[i];
+    return `<div class="rep-turn">
+      <div class="rep-them"><div class="rep-lbl">${esc(p.who)} · ${esc(b.stage)}</div><div class="rep-say">${esc(b.them)}</div></div>
+      <textarea class="input rep-ta" placeholder="Type what you'd actually say on the phone…"></textarea>
+      ${rev
+        ? `<div class="rep-coach"><div class="rep-lbl2">Model line</div><div class="rep-model">${esc(b.model)}</div>
+             <div class="rep-why">Why it works: ${esc(b.why)}</div></div>`
+        : `<button class="btn ghost sm" data-act="rep-reveal" data-i="${i}">Reveal a strong honest line</button>`}
+    </div>`;
+  }).join("");
+
+  const scores = state.rep.scores || REP_DIMS.map(() => 5);
+  const total = scores.reduce((a, b) => a + b, 0);
+  const scorecard = !done ? "" : `
+    <div class="card" style="border-color:var(--line-hot)">
+      <div class="rep-coach" style="border-style:solid;margin:0 0 16px">
+        <div class="rep-lbl2">How it lands</div><div class="rep-model">${esc(p.outcome)}</div>
+      </div>
+      <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:0 0 4px">Scorecard</h3>
+      <p class="sub" style="margin:0 0 12px">Rate the rep you just ran, 0–10 each. Be honest — this is where it gets better.</p>
+      ${REP_DIMS.map((d, i) => `<div class="rep-dim">
+        <label>${d}</label>
+        <input type="range" min="0" max="10" value="${scores[i]}" data-act="rep-score" data-i="${i}">
+        <span class="rep-val" id="repv${i}">${scores[i]}</span></div>`).join("")}
+      <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-top:14px">
+        <div><div class="rep-lbl">Total</div>
+          <div style="font-family:var(--disp);font-weight:900;font-style:italic;font-size:38px;line-height:1"><span id="reptotal">${total}</span><span style="font-size:19px;color:var(--txt-3)">/70</span></div></div>
+        <div style="flex:1;min-width:240px"><label class="rep-lbl2" style="display:block;margin-bottom:5px">The one fix that moves the needle most</label>
+          <textarea class="input" data-act="rep-fix" placeholder="e.g. I named a price before I found a comfortable number — anchor the comfort question first.">${esc(state.rep.fix || "")}</textarea></div>
+      </div>
+      <div style="margin-top:14px"><button class="btn green" data-act="rep-new">Run another rep →</button></div>
+    </div>`;
+
   return `
   <div class="page-head">
     <h2 class="display">Training.</h2>
-    <p class="sub">Nothing in here yet.</p>
+    <p class="sub">Practice a full call against a real-feeling prospect. Read their line, say what you'd say, then reveal a strong honest line and score yourself. They only buy if you earn it.</p>
   </div>
 
-  <div class="empty">
-    <div class="big">Coming soon.</div>
-    <div>This is where the training will live.</div>
+  <div class="card" style="border-color:var(--line-hot);background:linear-gradient(180deg,var(--blue-wash,rgba(46,139,255,.1)),transparent)">
+    <span class="tag" style="color:var(--blue)">START EVERY CALL HERE</span>
+    <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:6px 0 4px">The honest open</h3>
+    <div style="font-size:15.5px;line-height:1.6;color:#dbe6fb">"Hey [first name], this is [your name] with Closers Collective — I'm a licensed final-expense agent. You sent back a card about covering your final expenses, and I'm just following up. Did I catch you at an okay time?"</div>
+    <div class="rep-why" style="margin-top:8px">Real name. Real agency. Real reason. At the bank step you ask for the details straight — that's what they're actually handing you.</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <div style="font-weight:800;font-size:17px">${esc(p.who)}, ${p.age} · ${esc(p.state)}</div>
+        <div class="sub" style="margin:2px 0 0">${esc(p.meta)}</div>
+        <div class="chips" style="margin-top:8px">${p.traits.map(t => `<span class="chip" style="pointer-events:none">${esc(t)}</span>`).join("")}</div>
+      </div>
+      <button class="btn ghost sm" data-act="rep-new">↻ New prospect</button>
+    </div>
+    ${repSteps(p, state.rep.beat)}
+  </div>
+
+  <div class="card">
+    ${turns}
+    ${done ? "" : `<div style="margin-top:12px"><button class="btn green" data-act="rep-next">${state.rep.beat === 0 ? "Start the call →" : "Next line →"}</button></div>`}
+  </div>
+
+  ${scorecard}
+
+  <div class="card" style="border-color:var(--red-line,#5a2b2b);background:var(--red-wash)">
+    <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:0 0 6px;color:#ff8b84">Off-limits — costs you the customer and the licence</h3>
+    <div style="color:#f3c9c6;font-size:13px;line-height:1.6">Never on a rep, never on a real call: posing as a state insurance department, the carrier, or a "producer registry" · telling someone their agent is "under investigation" or was "clean slating" them · claiming a waiting period you can't verify · framing the bank ask as "just verify the last four we already have." Say who you are. Name the real carrier. Ask straight.</div>
   </div>`;
 }
 
@@ -1992,6 +2158,22 @@ document.addEventListener("click", async (e) => {
       state.importLocal = false; state.importStage = ""; return render();
 
     case "saveimport": return saveImport();
+
+    /* ----- the practice trainer on the Training tab ----- */
+    case "rep-new": {
+      state.rep = { pi: (state.rep.pi + 1) % REP_PROSPECTS.length, beat: 0, revealed: {}, scored: false, scores: null, fix: "" };
+      return render();
+    }
+    case "rep-next": {
+      const p = REP_PROSPECTS[state.rep.pi % REP_PROSPECTS.length];
+      if (state.rep.beat < p.beats.length) state.rep.beat++;
+      if (state.rep.beat >= p.beats.length && !state.rep.scores) state.rep.scores = REP_DIMS.map(() => 5);
+      return render();
+    }
+    case "rep-reveal": {
+      state.rep.revealed[Number(el.dataset.i)] = true;
+      return render();
+    }
   }
 });
 
@@ -2008,6 +2190,21 @@ document.addEventListener("input", (e) => {
   const el = e.target.closest("[data-act='editrow']");
   if (!el || !state.importRows) return;
   state.importRows[Number(el.dataset.i)][el.dataset.f] = el.value;
+});
+
+/* trainer scorecard: update the number and the total in place, no re-render */
+document.addEventListener("input", (e) => {
+  const s = e.target.closest("[data-act='rep-score']");
+  if (s) {
+    if (!state.rep.scores) state.rep.scores = REP_DIMS.map(() => 5);
+    const i = Number(s.dataset.i);
+    state.rep.scores[i] = Number(s.value);
+    const v = document.getElementById("repv" + i); if (v) v.textContent = s.value;
+    const t = document.getElementById("reptotal"); if (t) t.textContent = state.rep.scores.reduce((a, b) => a + b, 0);
+    return;
+  }
+  const f = e.target.closest("[data-act='rep-fix']");
+  if (f) { state.rep.fix = f.value; }
 });
 
 /* drag a screenshot straight onto the page */
