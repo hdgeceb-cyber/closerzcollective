@@ -1153,6 +1153,7 @@ const REP_DIMS = ["Open & honesty","Discovery","Building value (honestly)","Obje
 const REP_PROSPECTS = [
   { who:"Dolores", age:68, state:"Ohio", voice:"f",
     meta:"Mailed a card weeks ago · small whole-life already · fixed income · guarded",
+    brief:"You mailed back a card weeks ago about final-expense coverage. You already have a small $10,000 whole-life policy for your daughter, you pay around $55 a month, and you are on a fixed income (Social Security, paid the third Wednesday). You are guarded and have had a lot of calls. You warm up if the agent is honest and patient. You want to talk to your daughter before you decide. You will only agree if they find a comfortable monthly number, do not rush you, and line the first payment up with your deposit day.",
     traits:["Guarded","Has coverage","Fixed income"],
     beats:[
       { stage:"Open", them:"Hello? …who's this?",
@@ -1177,6 +1178,7 @@ const REP_PROSPECTS = [
     outcome:"She buys if you flipped the daughter stall without steamrolling and aligned the draft to her deposit. Rush her, or name a price before the comfort question, and she says ‘let me think.’" },
   { who:"Earl", age:72, state:"Georgia", voice:"m",
     meta:"No coverage · 'healthy, don't need it' · thinks about money as savings",
+    brief:"You have NO life insurance. You think you do not need it because you are healthy. You are skeptical of phone salespeople and worry about locking money away you cannot touch. You come around if the agent honestly reframes health as the reason to buy now, answers the liquidity worry truthfully (cash value you can borrow against), and proves who they are with a real producer number. You will not be rushed.",
     traits:["No coverage","Skeptical","Healthy"],
     beats:[
       { stage:"Open", them:"Yeah? Who's this now?",
@@ -1201,6 +1203,7 @@ const REP_PROSPECTS = [
     outcome:"Earl buys if you turned ‘I’m healthy’ into the reason to act, answered the liquidity worry honestly, and met the trust question with a real producer number instead of a bluff." },
   { who:"Brenda", age:65, state:"Texas", voice:"f",
     meta:"Busy · 'call me back' · warms up fast if you flip the stall",
+    brief:"You mailed a card but never followed up. You are busy and try to get off the phone. If the agent flips your stall cleanly and keeps it short, you engage. You only want to cover the funeral and you do not want to overpay. You buy if they keep it right-sized, flex the coverage to a payment you are comfortable with, and set the draft after your payday.",
     traits:["Busy","Warms up","Price-aware"],
     beats:[
       { stage:"Open", them:"I'm actually right in the middle of something.",
@@ -1296,7 +1299,7 @@ function trainingView() {
   ${state.rep.beat === 0 && !done ? `
   <div class="card" style="border-color:var(--line-hot);text-align:center">
     <div style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;font-size:20px">It's a phone call</div>
-    <div class="sub" style="margin:4px auto 14px;max-width:52ch">Tap call, put it on speaker, and just talk — ${esc(p.who)} answers out loud and talks back. When you're done saying your line, tap <b>Done talking</b> and ${esc(p.who)} responds.</div>
+    <div class="sub" style="margin:4px auto 14px;max-width:54ch">Tap call, put it on speaker, and just talk — ${esc(p.who)} <b>listens to what you actually say</b> and answers back like a real person. Tap <b>Done talking</b> when you finish your line and ${esc(p.who)} responds.</div>
     <button class="btn green" data-act="rep-call" style="font-size:16px;padding:12px 26px">📞 Call ${esc(p.who)}</button>
     <div class="rep-why" style="margin-top:10px">Prefer to read it instead? Tap “Start the call” below to run it on-screen.</div>
   </div>` : ""}
@@ -1391,9 +1394,36 @@ function vcYou(said) {
   if (el) el.textContent = said ? "You: " + said : "";
 }
 
+/* Talk to the roleplay edge function. Smart mode makes the prospect actually
+   listen and answer. When the key is not in yet it 503s and we fall back to
+   the scripted call, so the tool always works. */
+function repBrief(p) { return { who: p.who, age: p.age, state: p.state, brief: p.brief }; }
+async function roleplayCall(payload) {
+  let session = null;
+  try { session = (await sb.auth.getSession()).data.session; } catch (e) {}
+  const r = await fetch(`${SUPABASE_URL}/functions/v1/roleplay`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${(session && session.access_token) || SUPABASE_ANON_KEY}` },
+    body: JSON.stringify(payload),
+  });
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(out.error || ("roleplay " + r.status));
+  return out;
+}
+async function roleplayOpen(p) {
+  try {
+    const out = await Promise.race([
+      roleplayCall({ mode: "open", persona: repBrief(p) }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 15000)),
+    ]);
+    return (out && out.say) ? out.say : null;
+  } catch (e) { return null; }
+}
+
 async function startVoiceCall(p) {
   vcVoices();
-  VC.hangup = false;
+  VC.hangup = false; VC.smartHistory = null;
   const root = document.getElementById("callroot") || (() => {
     const d = document.createElement("div"); d.id = "callroot"; document.body.appendChild(d); return d;
   })();
@@ -1408,6 +1438,7 @@ async function startVoiceCall(p) {
         <div id="vc-cap" class="vc-cap"></div>
         <div id="vc-you" class="vc-youline"></div>
         <div id="vc-hint" class="vc-hint"></div>
+        <div id="vc-note" class="vc-hint" style="color:var(--txt-3);font-size:12px"></div>
         <div class="vc-controls">
           <button class="btn green vc-done" data-act="vc-done" disabled>Done talking ▸</button>
           <button class="btn sm ghost" data-act="vc-hint-btn">Need a line?</button>
@@ -1416,31 +1447,83 @@ async function startVoiceCall(p) {
       </div>
     </div>`;
 
-  // ring, then run the beats
-  await new Promise(r => setTimeout(r, 1100));
+  await new Promise(r => setTimeout(r, 1100));   // ring
   if (VC.hangup) return;
-  vcStatus(`${p.who} picked up`, "live");
 
+  // try the listening prospect; fall back to the scripted call if it's not on
+  vcStatus("Connecting…", "");
+  const opening = await roleplayOpen(p);
+  if (VC.hangup) return;
+  if (opening) return runSmartCall(p, opening);
+
+  const note = document.getElementById("vc-note");
+  if (note) note.textContent = `Smart mode is off — running the scripted call. Add the Anthropic key in Supabase and ${p.who} will listen and answer for real.`;
+  return runScriptedCall(p);
+}
+
+/* the prospect actually listens: each turn we send what the agent SAID and
+   speak back whatever the model answers. */
+async function runSmartCall(p, opening) {
+  const history = [];
+  vcStatus(`${p.who} picked up`, "live");
+  vcStatus(`${p.who} is talking…`, "them");
+  vcCaption(p.who, opening);
+  await vcSpeak(opening, p.voice);
+  history.push({ role: "prospect", text: opening });
+  if (VC.hangup) return;
+
+  let turns = 0;
+  while (!VC.hangup && turns < 24) {
+    turns++;
+    // the agent's turn
+    vcStatus("Your turn — just talk. Tap “Done talking” when you finish.", "you");
+    vcYou(""); document.getElementById("vc-hint").textContent = "";
+    window.__vcModel = "Say who you really are, name the carrier, ask one honest question — and listen to the answer.";
+    const doneBtn = document.querySelector(".vc-done"); if (doneBtn) doneBtn.disabled = false;
+    const said = await vcListen(t => vcYou(t));
+    if (VC.hangup) return;
+    if (doneBtn) doneBtn.disabled = true;
+    const agentText = (said || "").trim() || "(silence)";
+    history.push({ role: "agent", text: agentText });
+
+    // the prospect thinks and answers what was actually said
+    vcStatus(`${p.who} is thinking…`, "them"); vcYou("");
+    let resp;
+    try { resp = await roleplayCall({ mode: "reply", persona: repBrief(p), history, last_agent: agentText }); }
+    catch (e) { resp = { say: "Sorry hon, I've got to go. Bye now.", ended: true }; }
+    if (VC.hangup) return;
+    const say = (resp && resp.say) || "…";
+    vcStatus(`${p.who} is talking…`, "them"); vcCaption(p.who, say);
+    await vcSpeak(say, p.voice);
+    history.push({ role: "prospect", text: say });
+    if (resp && resp.ended) break;
+  }
+
+  VC.smartHistory = history;
+  vcStatus("Call ended.", "");
+  const ctr = document.querySelector(".vc-controls");
+  if (ctr) ctr.innerHTML = `<button class="btn green" data-act="vc-score">See your scorecard →</button>
+    <button class="btn sm ghost" data-act="vc-again">Call again</button>`;
+}
+
+/* the fallback: the scripted beats, spoken. Works with no key. */
+async function runScriptedCall(p) {
+  vcStatus(`${p.who} picked up`, "live");
   for (let i = 0; i < p.beats.length; i++) {
     if (VC.hangup) return;
     const b = p.beats[i];
-    // the prospect speaks
     vcStatus(`${p.who} is talking…`, "them");
-    vcCaption(p.who, b.them);
-    vcYou("");
+    vcCaption(p.who, b.them); vcYou("");
     document.getElementById("vc-hint").textContent = "";
     const doneBtn = document.querySelector(".vc-done"); if (doneBtn) doneBtn.disabled = true;
     await vcSpeak(b.them, p.voice);
     if (VC.hangup) return;
-    // the agent's turn
     vcStatus("Your turn — just talk. Tap “Done talking” when you finish.", "you");
     if (doneBtn) doneBtn.disabled = false;
-    window.__vcModel = b.model;  // for the "need a line?" button
+    window.__vcModel = b.model;
     await vcListen(said => vcYou(said));
     if (VC.hangup) return;
   }
-
-  // close it out
   vcStatus("Call ended.", "");
   vcCaption(p.who, "Alright, thanks — talk soon.");
   await vcSpeak("Alright, thanks — talk soon.", p.voice);
@@ -1452,6 +1535,18 @@ async function startVoiceCall(p) {
     <button class="btn sm ghost" data-act="vc-again">Call again</button>`;
 }
 
+/* score the finished smart call from the real transcript */
+async function scoreSmartCall() {
+  if (!VC.smartHistory || !VC.smartHistory.length) return;
+  try {
+    const out = await roleplayCall({ mode: "score", history: VC.smartHistory });
+    const s = out.scores || {};
+    state.rep.scores = [s.open, s.discovery, s.value, s.objection, s.price, s.close, s.rapport]
+      .map(n => Math.max(0, Math.min(10, Math.round(Number(n) || 0))));
+    state.rep.fix = out.fix || "";
+  } catch (e) { /* leave the default 5s */ }
+}
+
 function endVoiceCall(toScore) {
   VC.hangup = true;
   try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {}
@@ -1460,6 +1555,7 @@ function endVoiceCall(toScore) {
   const root = document.getElementById("callroot"); if (root) root.innerHTML = "";
   const p = REP_PROSPECTS[state.rep.pi % REP_PROSPECTS.length];
   if (toScore) { state.rep.beat = p.beats.length; if (!state.rep.scores) state.rep.scores = REP_DIMS.map(() => 5); }
+  VC.smartHistory = null;
   render();
 }
 
@@ -2363,6 +2459,11 @@ document.addEventListener("click", async (e) => {
       return;
     }
     case "vc-score": {
+      if (VC.smartHistory && VC.smartHistory.length) {
+        vcStatus("Scoring your call…", "");
+        const ctr = document.querySelector(".vc-controls"); if (ctr) ctr.innerHTML = "";
+        await scoreSmartCall();
+      }
       endVoiceCall(true);
       return;
     }
