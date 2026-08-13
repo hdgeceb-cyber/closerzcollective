@@ -479,6 +479,14 @@ td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
 .dz-title{font-family:var(--disp);font-weight:900;font-style:italic;font-stretch:78%;text-transform:uppercase;
   font-size:20px;color:#fff;letter-spacing:-.01em}
 .dz-sub{font-size:13px;color:var(--txt-2);margin:7px auto 14px;max-width:60ch;line-height:1.5}
+.pastebox{border:1.5px solid var(--line-hot);border-radius:var(--radius);padding:20px 22px;margin-bottom:26px;
+  background:linear-gradient(180deg,rgba(46,139,255,.06),transparent)}
+.pastebox textarea.input{min-height:132px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;
+  white-space:pre;overflow-wrap:normal;overflow-x:auto}
+.pastebox .prow{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
+.pastebox .phint{font-size:12.5px;color:var(--txt-3)}
+.pastebox .phint a{color:var(--txt-2);text-decoration:underline;cursor:pointer}
+.pastebox .phint a:hover{color:var(--blue)}
 .dz-bar{height:3px;width:220px;margin:0 auto;background:var(--line);border-radius:2px;overflow:hidden}
 .dz-bar span{display:block;height:100%;width:40%;background:var(--blue);border-radius:2px;
   animation:slide 1.1s ease-in-out infinite;box-shadow:0 0 12px var(--blue)}
@@ -702,6 +710,7 @@ const state = {
   importRows: null,      // parsed screenshot, waiting for the agent to confirm
   importBusy: false,
   importError: null,
+  pasteText: "",         // what they pasted, kept so a bad paste is not lost
   importLocal: false,    // true when the rows were read in the browser, not by the paid reader
   importStage: "",       // what the reader is doing right now, shown while it works
   adminScope: "me",      // admin only: "me" | "all" | <agent uuid>
@@ -1255,7 +1264,7 @@ function pipelineView() {
       due ? ` &middot; ${due} to call back now` : " &middot; nothing due"}. Once they buy, they move to your book.</p>
   </div>
 
-  ${state.importRows ? importReview() : importDrop("leads")}
+  ${state.importRows ? importReview() : importPaste()}
 
   ${due ? `<div class="banner ${dueLate.length ? "hot" : ""}">
     <div class="bignum num">${due}</div>
@@ -1399,6 +1408,43 @@ function leadTable(rows) {
         <td class="r">${l.phone ? `<a class="btn green sm" href="${telHref(l.phone)}" data-act="dialLead" data-id="${l.id}">Call</a>` : ""}</td>
       </tr>`;
     }).join("")}</tbody></table></div>`;
+}
+
+/* ---------- paste your lead list ----------
+   The list is already text in their dialer or their spreadsheet. Copying it
+   is exact — no photograph of a screen to squint at, no reader to be wrong.
+   The picture is still there for the times a photo is genuinely all they have. */
+function importPaste() {
+  if (state.importBusy) {
+    return `<div class="dropzone busy">
+      <div class="dz-inner">
+        <div class="dz-title">Reading it now…</div>
+        <div class="dz-sub">${esc(state.importStage || "A few seconds. Do not close the page.")}</div>
+        <div class="dz-bar"><span></span></div>
+      </div>
+    </div>
+    ${state.importError ? `<div class="notice bad">${esc(state.importError)}</div>` : ""}`;
+  }
+
+  const sample = "Ada Whitfield\t760-555-9911\t6/12/1949\tVista\tCA";
+  return `<div class="pastebox">
+    <div class="dz-title">Paste your lead list</div>
+    <div class="dz-sub" style="margin-left:0;max-width:none">
+      Select the rows in your dialer or your spreadsheet, copy them, and paste them in here.
+      Any order of columns, with or without a header row. Nothing saves until you have checked it.
+    </div>
+    <textarea class="input" id="leadpaste" spellcheck="false"
+      placeholder="${esc(sample)}">${esc(state.pasteText || "")}</textarea>
+    <div class="prow">
+      <button class="btn green" type="button" data-act="readpaste">Read the list</button>
+      <span class="phint">Only have a picture of it?
+        <a data-act="pickfile">Drop a screenshot instead</a>${DEMO_MODE ? `
+        <br><strong style="color:var(--gold)">Demo only &mdash; it is not reading your picture.</strong>
+        Drop anything and a sample list comes back, so you can see the checking step.` : ""}</span>
+    </div>
+    <input type="file" id="leadshot" accept="image/*" hidden>
+  </div>
+  ${state.importError ? `<div class="notice bad">${esc(state.importError)}</div>` : ""}`;
 }
 
 /* ---------- screenshot import ---------- */
@@ -1937,6 +1983,10 @@ document.addEventListener("click", async (e) => {
       if (!state.importRows.length) state.importRows = null;
       return render();
     }
+    case "readpaste": {
+      const box = document.getElementById("leadpaste");
+      return readPastedList(box ? box.value : "");
+    }
     case "cancelimport":
       state.importRows = null; state.importError = null;
       state.importLocal = false; state.importStage = ""; return render();
@@ -2403,6 +2453,186 @@ function parseLeadLines(text) {
     seen.add(key);
     return true;
   });
+}
+
+/* ============================================================
+   Reading a pasted lead list.
+
+   Copying rows out of a dialer or a spreadsheet gives you tab-separated
+   text; a saved export gives you commas. Either way the characters are
+   exact — there is nothing to recognise and nothing to get wrong. This
+   works out which column is which, whether or not there is a header row.
+   ============================================================ */
+
+/* one line of delimited text -> its cells, honouring "quoted, fields" */
+function splitCells(line, delim) {
+  const out = [];
+  let cur = "", q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (q) {
+      if (c === '"' && line[i+1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === delim) { out.push(cur); cur = ""; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+function pickDelimiter(lines) {
+  const score = d => {
+    const counts = lines.map(l => splitCells(l, d).length).filter(n => n > 1);
+    if (counts.length < Math.max(1, Math.floor(lines.length * 0.6))) return 0;
+    const mode = counts.sort((a,b) => a-b)[Math.floor(counts.length/2)];
+    return counts.filter(n => n === mode).length * mode;
+  };
+  const tab = score("\t"), comma = score(","), semi = score(";"), pipe = score("|");
+  const best = Math.max(tab, comma, semi, pipe);
+  if (!best) return null;
+  return tab === best ? "\t" : semi === best ? ";" : pipe === best ? "|" : ",";
+}
+
+const HEAD_MAP = [
+  [/^(full[\s_-]*name|name|lead[\s_-]*name|client[\s_-]*name|contact)$/i, "full_name"],
+  [/^(first[\s_-]*name|first|fname|given[\s_-]*name)$/i, "first"],
+  [/^(last[\s_-]*name|last|lname|surname|family[\s_-]*name)$/i, "last"],
+  [/(phone|mobile|cell|tel|number)/i, "phone"],
+  [/(d\.?o\.?b|date[\s_-]*of[\s_-]*birth|birth[\s_-]*date|birthday|born)/i, "date_of_birth"],
+  [/^(city|town|municipality)$/i, "city"],
+  [/^(state|st|province|region)$/i, "state"],
+];
+
+function headerRole(cell) {
+  const t = String(cell || "").trim();
+  if (!t) return null;
+  for (const [re, role] of HEAD_MAP) if (re.test(t)) return role;
+  return null;
+}
+
+/* is this first row a header, or is it already a person? */
+function isHeaderRow(cells) {
+  if (cells.some(c => grabPhone(c) || grabDob(c))) return false;
+  const named = cells.filter(c => headerRole(c)).length;
+  return named >= 2 || (named >= 1 && cells.length <= 2);
+}
+
+const YEARLESS = /^\d{1,2}[\/\-.]\d{1,2}$/;
+
+/* no header row: work out each column from what is actually in it */
+function inferRoles(rows) {
+  const width = Math.max(...rows.map(r => r.length));
+  const roles = new Array(width).fill(null);
+  const col = i => rows.map(r => (r[i] || "").trim()).filter(Boolean);
+  const most = (vals, test) => vals.length && vals.filter(test).length / vals.length >= 0.6;
+
+  for (let i = 0; i < width; i++) {
+    const v = col(i);
+    if (!v.length) continue;
+    if (most(v, x => !!grabPhone(x))) { roles[i] = "phone"; continue; }
+    if (most(v, x => !!grabDob(x) || YEARLESS.test(x))) { roles[i] = "date_of_birth"; continue; }
+    if (most(v, x => US_STATES.includes(x.toUpperCase()))) { roles[i] = "state"; continue; }
+    if (most(v, x => /[A-Za-z]{2}/.test(x))) roles[i] = "text";
+  }
+
+  // the text columns in front of the first number are the name
+  const firstData = roles.findIndex(r => r === "phone" || r === "date_of_birth" || r === "state");
+  const before = [], after = [];
+  roles.forEach((r, i) => { if (r === "text") ((firstData < 0 || i < firstData) ? before : after).push(i); });
+
+  if (before.length >= 2) { roles[before[0]] = "first"; roles[before[1]] = "last"; }
+  else if (before.length === 1) roles[before[0]] = "full_name";
+  else if (after.length) roles[after.shift()] = "full_name";
+
+  // the last remaining text column is the town
+  const left = roles.map((r,i) => r === "text" ? i : -1).filter(i => i >= 0);
+  if (left.length) roles[left[left.length - 1]] = "city";
+  roles.forEach((r, i) => { if (r === "text") roles[i] = null; });
+  return roles;
+}
+
+function rowFromCells(cells, roles) {
+  const g = role => { const i = roles.indexOf(role); return i < 0 ? "" : (cells[i] || "").trim(); };
+  let name = g("full_name");
+  if (!name) name = [g("first"), g("last")].filter(Boolean).join(" ");
+  // "Whitfield, Ada" out of a spreadsheet is one column, back to front
+  if (/^[A-Za-z'\-. ]+,\s*[A-Za-z'\-. ]+$/.test(name)) {
+    const [l, f] = name.split(",");
+    name = `${f.trim()} ${l.trim()}`;
+  }
+  name = name.replace(/\s+/g, " ").trim();
+  if (!/[A-Za-z]{2}/.test(name)) name = "";   // "-", "n/a", punctuation: not a name
+  const st = g("state").toUpperCase();
+  return {
+    full_name: name,
+    phone: grabPhone(g("phone")) || grabPhone(cells.join(" ")),
+    date_of_birth: grabDob(g("date_of_birth")),
+    city: g("city"),
+    state: US_STATES.includes(st) ? st : "",
+  };
+}
+
+/* Turn pasted text into rows for the review table.
+   Returns { rows, skipped } — skipped is how many lines carried nothing. */
+function parsePastedList(text) {
+  const lines = String(text || "").split(/\r?\n/).map(l => l.replace(/\s+$/, "")).filter(l => l.trim());
+  if (!lines.length) return { rows: [], skipped: 0 };
+
+  const delim = pickDelimiter(lines);
+  // no columns at all — it is loose text, read it the same way a picture is read
+  if (!delim) return { rows: parseLeadLines(lines.join("\n")), skipped: 0 };
+
+  let grid = lines.map(l => splitCells(l, delim));
+  let roles = null;
+
+  if (isHeaderRow(grid[0])) {
+    roles = grid[0].map(headerRole);
+    grid = grid.slice(1);
+  }
+  if (!grid.length) return { rows: [], skipped: 0 };
+  if (!roles || !roles.some(Boolean)) roles = inferRoles(grid);
+
+  const rows = [];
+  const seen = new Set();
+  let skipped = 0;
+  for (const cells of grid) {
+    if (!cells.some(c => c.trim())) continue;
+    const r = rowFromCells(cells, roles);
+    if (!r.full_name && !r.phone) { skipped++; continue; }
+    const key = (r.phone || "") + "|" + r.full_name.toLowerCase();
+    if (seen.has(key)) { skipped++; continue; }
+    seen.add(key);
+    rows.push(r);
+  }
+  return { rows, skipped };
+}
+
+function readPastedList(text) {
+  state.pasteText = text;
+  state.importError = null;
+  state.importLocal = false;
+
+  if (!String(text || "").trim()) {
+    state.importError = "Nothing pasted yet. Copy the rows out of your dialer or your spreadsheet first.";
+    return render();
+  }
+
+  let out;
+  try { out = parsePastedList(text); }
+  catch (err) { state.importError = "Could not make sense of that. " + (err.message || ""); return render(); }
+
+  if (!out.rows.length) {
+    state.importError = "No people found in that. Each person needs to be on their own line, "
+      + "with at least a name or a phone number on it.";
+    return render();
+  }
+
+  state.importRows = out.rows;
+  state.pasteText = "";
+  render();
+  if (out.skipped) flash(`${out.skipped} line${out.skipped===1?"":"s"} had no name or number on it and ${out.skipped===1?"was":"were"} left out.`);
 }
 
 async function readInBrowser(file) {
