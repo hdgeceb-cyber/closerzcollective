@@ -986,7 +986,8 @@ function authScreen() {
       <form id="authform">
         ${inTab ? "" : `
           <label class="field"><span>Full name</span><input class="input" name="full_name" required autocomplete="name"></label>
-          <label class="field"><span>Mobile number</span><input class="input" name="phone" type="tel" placeholder="760-555-0134" autocomplete="tel"></label>`}
+          <label class="field"><span>Mobile number</span><input class="input" name="phone" type="tel" placeholder="760-555-0134" autocomplete="tel"></label>
+          <label class="field"><span>Who is your upline?</span><input class="input" name="upline" placeholder="The person who brought you on" autocomplete="off"></label>`}
         <label class="field"><span>Email</span><input class="input" name="email" type="email" required autocomplete="email"></label>
         <label class="field"><span>Password</span><input class="input" name="password" type="password" required minlength="8" autocomplete="${inTab?"current-password":"new-password"}"></label>
         <button class="btn green full" type="submit" ${state.busy?"disabled":""} style="margin-top:6px">
@@ -2179,7 +2180,7 @@ function teamView() {
         const isMgr = t.role === "admin";
         return `
         <tr data-act="scopeto" data-id="${t.agent_id}">
-          <td><strong>${esc(t.full_name || "—")}</strong>${isMgr?` <span class="tag" data-role="mgr" style="color:var(--blue);border-color:var(--blue)">Manager</span>`:""}${isMe?` <span class="tag plain">you</span>`:""}<div style="font-size:12px;color:var(--txt-3)">${esc(t.email)}</div></td>
+          <td><strong>${esc(t.full_name || "—")}</strong>${isMgr?` <span class="tag" data-role="mgr" style="color:var(--blue);border-color:var(--blue)">Manager</span>`:""}${(t.in_training && !isMgr)?` <span class="tag" data-role="training" style="color:#FFC24D;border-color:#FFC24D">Training</span>`:""}${isMe?` <span class="tag plain">you</span>`:""}<div style="font-size:12px;color:var(--txt-3)">${esc(t.email)}${t.upline?` &middot; <span data-role="upline">upline: ${esc(t.upline)}</span>`:""}</div></td>
           <td><span class="stage"><span class="dot ${t.status==="active"?"s-sold":t.status==="pending"?"s-quoted":"s-lost"}"></span>${t.status}</span></td>
           <td class="r">${t.total_clients}</td>
           <td class="r">${t.sold}</td>
@@ -2187,12 +2188,16 @@ function teamView() {
           <td class="r" style="color:${Number(t.overdue_calls)?"var(--red)":"inherit"};font-weight:${Number(t.overdue_calls)?600:400}">${t.overdue_calls}</td>
           <td>${t.last_activity ? esc(prettyStamp(t.last_activity)) : "never"}</td>
           <td class="r" style="white-space:nowrap">${isMe ? "" : `${
+            (t.status==="active" && !isMgr)
+              ? `<button class="btn quiet sm" data-act="traintoggle" data-id="${t.agent_id}">${t.in_training ? "Mark active" : "Move to training"}</button>`
+              : ""
+          }${
             t.status==="active"
               ? (isMgr
                   ? `<button class="btn quiet sm" data-act="removemanager" data-id="${t.agent_id}">Remove manager</button>`
                   : `<button class="btn quiet sm" data-act="makemanager" data-id="${t.agent_id}">Make manager</button>`)
               : ""
-          }${
+          }<button class="btn quiet sm" data-act="setupline" data-id="${t.agent_id}">Upline</button>${
             t.status==="active"
               ? `<button class="btn quiet sm" data-act="disable" data-id="${t.agent_id}">Turn off</button>`
               : `<button class="btn quiet sm" data-act="approve" data-id="${t.agent_id}">Turn on</button>`
@@ -2480,6 +2485,23 @@ document.addEventListener("click", async (e) => {
       if (error) return flash(error.message, "bad");
       await refresh(); return flash(`${who} is back to an agent.`);
     }
+    case "traintoggle": {
+      const row = state.team.find(t => t.agent_id === el.dataset.id) || {};
+      const who = row.full_name || row.email || "this agent";
+      const toTraining = !row.in_training;
+      const { error } = await sb.from("profiles").update({ in_training: toTraining }).eq("id", el.dataset.id);
+      if (error) return flash(error.message, "bad");
+      await refresh(); return flash(toTraining ? `${who} is now marked In training.` : `${who} is now Active.`);
+    }
+    case "setupline": {
+      const row = state.team.find(t => t.agent_id === el.dataset.id) || {};
+      const who = row.full_name || row.email || "this agent";
+      const next = prompt(`Who is ${who}'s upline?`, row.upline || "");
+      if (next === null) return;   // cancelled
+      const { error } = await sb.from("profiles").update({ upline: next.trim() }).eq("id", el.dataset.id);
+      if (error) return flash(error.message, "bad");
+      await refresh(); return flash(next.trim() ? `Upline set to ${next.trim()}.` : "Upline cleared.");
+    }
     case "scopeto": {
       state.adminScope = el.dataset.id; state.view = "today";
       await refresh(); return;
@@ -2728,7 +2750,7 @@ async function doAuth(form) {
       const { data, error } = await sb.auth.signUp({
         email: f.email.trim(), password: f.password,
         options: {
-          data: { full_name: f.full_name, phone: f.phone },
+          data: { full_name: f.full_name, phone: f.phone, upline: (f.upline || "").trim() },
           // Come back to wherever they actually signed up from, not to whatever
           // the project's default Site URL happens to be.
           emailRedirectTo: location.origin + location.pathname,
