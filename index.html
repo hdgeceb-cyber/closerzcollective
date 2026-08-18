@@ -587,7 +587,7 @@ Resources:`;for(let t of c){if(!t||typeof t!=`string`)throw Error(`@supabase/aut
    Get both from Supabase → Project Settings → API
    ============================================================ */
 const SUPABASE_URL_BAKED      = "https://lopmgakgyjhlmffrnsgd.supabase.co";
-const SUPABASE_ANON_KEY_BAKED = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxvcG1nYWtneWpobG1mZnJuc2dkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NzUzNTEsImV4cCI6MjEwMjA1MTM1MX0.3lAkaIgVmWz_Bx-dYfGaA_bsrkEICwDXbDElUXpG2xg";
+const SUPABASE_ANON_KEY_BAKED = "";   // left blank on purpose — see the setup link below
 
 /* The name shown next to the logo. */
 const AGENCY_NAME = "Closers Collective";
@@ -1233,87 +1233,10 @@ function repSteps(p, beat) {
 }
 
 function trainingView() {
-  const p = REP_PROSPECTS[state.rep.pi % REP_PROSPECTS.length];
-  const shown = Math.min(state.rep.beat + 1, p.beats.length);
-  const done = state.rep.beat >= p.beats.length;
-
-  const turns = p.beats.slice(0, shown).map((b, i) => {
-    const rev = state.rep.revealed[i];
-    return `<div class="rep-turn">
-      <div class="rep-them"><div class="rep-lbl">${esc(p.who)} · ${esc(b.stage)}</div><div class="rep-say">${esc(b.them)}</div></div>
-      <textarea class="input rep-ta" placeholder="Type what you'd actually say on the phone…"></textarea>
-      ${rev
-        ? `<div class="rep-coach"><div class="rep-lbl2">Model line</div><div class="rep-model">${esc(b.model)}</div>
-             <div class="rep-why">Why it works: ${esc(b.why)}</div></div>`
-        : `<button class="btn ghost sm" data-act="rep-reveal" data-i="${i}">Reveal a strong honest line</button>`}
-    </div>`;
-  }).join("");
-
-  const scores = state.rep.scores || REP_DIMS.map(() => 5);
-  const total = scores.reduce((a, b) => a + b, 0);
-  const scorecard = !done ? "" : `
-    <div class="card" style="border-color:var(--line-hot)">
-      <div class="rep-coach" style="border-style:solid;margin:0 0 16px">
-        <div class="rep-lbl2">How it lands</div><div class="rep-model">${esc(p.outcome)}</div>
-      </div>
-      <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:0 0 4px">Scorecard</h3>
-      <p class="sub" style="margin:0 0 12px">Rate the rep you just ran, 0–10 each. Be honest — this is where it gets better.</p>
-      ${REP_DIMS.map((d, i) => `<div class="rep-dim">
-        <label>${d}</label>
-        <input type="range" min="0" max="10" value="${scores[i]}" data-act="rep-score" data-i="${i}">
-        <span class="rep-val" id="repv${i}">${scores[i]}</span></div>`).join("")}
-      <div style="display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;margin-top:14px">
-        <div><div class="rep-lbl">Total</div>
-          <div style="font-family:var(--disp);font-weight:900;font-style:italic;font-size:38px;line-height:1"><span id="reptotal">${total}</span><span style="font-size:19px;color:var(--txt-3)">/70</span></div></div>
-        <div style="flex:1;min-width:240px"><label class="rep-lbl2" style="display:block;margin-bottom:5px">The one fix that moves the needle most</label>
-          <textarea class="input" data-act="rep-fix" placeholder="e.g. I named a price before I found a comfortable number — anchor the comfort question first.">${esc(state.rep.fix || "")}</textarea></div>
-      </div>
-      <div style="margin-top:14px"><button class="btn green" data-act="rep-new">Run another rep →</button></div>
-    </div>`;
-
   return `
   <div class="page-head">
     <h2 class="display">Training.</h2>
-    <p class="sub">Practice a full call against a real-feeling prospect. Read their line, say what you'd say, then reveal a strong honest line and score yourself. They only buy if you earn it.</p>
-  </div>
-
-  <div class="card" style="border-color:var(--line-hot);background:linear-gradient(180deg,var(--blue-wash,rgba(46,139,255,.1)),transparent)">
-    <span class="tag" style="color:var(--blue)">START EVERY CALL HERE</span>
-    <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:6px 0 4px">The honest open</h3>
-    <div style="font-size:15.5px;line-height:1.6;color:#dbe6fb">"Hey [first name], this is [your name] with Closers Collective — I'm a licensed final-expense agent. You sent back a card about covering your final expenses, and I'm just following up. Did I catch you at an okay time?"</div>
-    <div class="rep-why" style="margin-top:8px">Real name. Real agency. Real reason. At the bank step you ask for the details straight — that's what they're actually handing you.</div>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
-      <div>
-        <div style="font-weight:800;font-size:17px">${esc(p.who)}, ${p.age} · ${esc(p.state)}</div>
-        <div class="sub" style="margin:2px 0 0">${esc(p.meta)}</div>
-        <div class="chips" style="margin-top:8px">${p.traits.map(t => `<span class="chip" style="pointer-events:none">${esc(t)}</span>`).join("")}</div>
-      </div>
-      <button class="btn ghost sm" data-act="rep-new">↻ New prospect</button>
-    </div>
-    ${repSteps(p, state.rep.beat)}
-  </div>
-
-  ${state.rep.beat === 0 && !done ? `
-  <div class="card" style="border-color:var(--line-hot);text-align:center">
-    <div style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;font-size:20px">It's a phone call</div>
-    <div class="sub" style="margin:4px auto 14px;max-width:54ch">Tap call, put it on speaker, and just talk — ${esc(p.who)} <b>listens to what you actually say</b> and answers back like a real person. Tap <b>Done talking</b> when you finish your line and ${esc(p.who)} responds.</div>
-    <button class="btn green" data-act="rep-call" style="font-size:16px;padding:12px 26px">📞 Call ${esc(p.who)}</button>
-    <div class="rep-why" style="margin-top:10px">Prefer to read it instead? Tap “Start the call” below to run it on-screen.</div>
-  </div>` : ""}
-
-  <div class="card">
-    ${turns}
-    ${done ? "" : `<div style="margin-top:12px"><button class="btn ${state.rep.beat === 0 ? "ghost" : "green"}" data-act="rep-next">${state.rep.beat === 0 ? "Start the call (read on-screen) →" : "Next line →"}</button></div>`}
-  </div>
-
-  ${scorecard}
-
-  <div class="card" style="border-color:var(--red-line,#5a2b2b);background:var(--red-wash)">
-    <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:0 0 6px;color:#ff8b84">Off-limits — costs you the customer and the licence</h3>
-    <div style="color:#f3c9c6;font-size:13px;line-height:1.6">Never on a rep, never on a real call: posing as a state insurance department, the carrier, or a "producer registry" · telling someone their agent is "under investigation" or was "clean slating" them · claiming a waiting period you can't verify · framing the bank ask as "just verify the last four we already have." Say who you are. Name the real carrier. Ask straight.</div>
+    <p class="sub">This section is empty.</p>
   </div>`;
 }
 
@@ -1423,7 +1346,7 @@ async function roleplayOpen(p) {
 
 async function startVoiceCall(p) {
   vcVoices();
-  VC.hangup = false; VC.smartHistory = null;
+  VC.hangup = false; VC.smartHistory = null; VC.localLog = null; VC.localResult = null;
   const root = document.getElementById("callroot") || (() => {
     const d = document.createElement("div"); d.id = "callroot"; document.body.appendChild(d); return d;
   })();
@@ -1457,8 +1380,8 @@ async function startVoiceCall(p) {
   if (opening) return runSmartCall(p, opening);
 
   const note = document.getElementById("vc-note");
-  if (note) note.textContent = `Smart mode is off — running the scripted call. Add the Anthropic key in Supabase and ${p.who} will listen and answer for real.`;
-  return runScriptedCall(p);
+  if (note) note.textContent = `Free practice mode — ${p.who} reacts to how you handle each step and pushes back when you skip one. Add the Anthropic key in Supabase for full free-form conversation.`;
+  return runLocalSmartCall(p);
 }
 
 /* the prospect actually listens: each turn we send what the agent SAID and
@@ -1535,6 +1458,211 @@ async function runScriptedCall(p) {
     <button class="btn sm ghost" data-act="vc-again">Call again</button>`;
 }
 
+/* ============================================================
+   LOCAL SMART CALL — the free, keyless "listening" prospect.
+   No account, no key, no backend, no cost. The browser hears the agent
+   (SpeechRecognition); this engine reads what they actually said, decides
+   whether they handled the current step, and reacts: it advances when the
+   agent does the honest thing, pushes back with a real objection when they
+   don't, and gets suspicious and hangs up if they fake authority or fish
+   for bank details. It's pattern-based, not a language model, so it can't
+   free-form like the keyed smart mode — but it genuinely reacts to what the
+   agent says instead of running a fixed script. This is the honest trainer:
+   cheating (pretext, "just verify the last four") makes the call HARDER.
+   ============================================================ */
+function lxNorm(s){ return " " + String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").replace(/\s+/g," ").trim() + " "; }
+function lxHas(t, ...ws){ return ws.some(w => t.indexOf(w) !== -1); }              // phrase / stem match
+function lxWord(t, ...ws){ return ws.some(w => t.indexOf(" "+w+" ") !== -1); }      // whole-word match
+
+function lxDishonest(t){
+  return lxHas(t,"insurance department","department of insurance","producer registry",
+    "under investigation","being investigated","clean slat","fraud division","fraud department",
+    "social security administration","verify the last four","confirm the last four",
+    "last four we already","just verify the last","already have on file","government agency","state regulator");
+}
+function lxOpen(t){
+  const agency = lxHas(t,"closers collective") || lxWord(t,"closers");
+  const lic    = lxWord(t,"licensed","agent") || lxHas(t,"insurance agent");
+  const reason = lxHas(t,"final expense","following up","follow up","reaching out","reach out","sent in","mailed") || lxWord(t,"card","coverage","cover");
+  return (agency || lic) && reason;
+}
+function lxQuestion(t, raw){
+  if (raw && raw.indexOf("?") !== -1) return true;
+  return lxWord(t,"what","who","when","which","how","remember","why") ||
+    lxHas(t,"do you","did you","are you","would you","could you","have you","let me ask","can i ask","tell me","how much","how many","is that","does that","what about","how about");
+}
+function lxComfort(t){
+  return lxWord(t,"comfortable","comfy","afford","budget","monthly","range") ||
+    lxHas(t,"a month","per month","what feels","feel comfortable","works for you","fit your","in your range","comfortable number");
+}
+function lxValue(t){
+  return lxHas(t,"day one","from day one","never goes up","never go up","cash value","more coverage","lower your payment","lower the payment","two options","whole life","pays out","builds value","build value","paid from day") ||
+    lxWord(t,"borrow","carrier","option","options");
+}
+function lxAck(t){
+  return lxWord(t,"fair","totally","understand","absolutely") ||
+    lxHas(t,"i get it","i hear you","makes sense","good question","great question","no pressure","take your time","that is fair","of course","no problem","i understand","completely fair");
+}
+function lxCloseDeposit(t){
+  return lxHas(t,"deposit","payday","get paid","check comes","check lands","check hits","social security","day after","after your check","after your pay","line it up","works with your check","when do you get","the day your check");
+}
+function lxClosePre(t){
+  return lxHas(t,"call you before","give you a call before","couple days before","few days before","before the first","before that first","reach out before","make sure the money","make sure it is set","confirm it is all");
+}
+function lxAddressed(stage, t, raw){
+  switch (stage){
+    case "Open":      return lxOpen(t);
+    case "Discovery": return lxQuestion(t, raw) || lxComfort(t);
+    case "Present":   return lxValue(t) || lxComfort(t);
+    case "Objection": return lxAck(t);
+    case "Close":     return lxCloseDeposit(t) || lxClosePre(t);
+    default:          return lxQuestion(t, raw);
+  }
+}
+const LX_STALL = {
+  Open:      ["Wait — who did you say you were, and who's this with?", "I've had a lot of these calls. What company are you with again?"],
+  Discovery: ["Well… I'm not sure I follow. What is it you're actually asking me?", "Hm. I don't know what you need to know that for."],
+  Present:   ["Okay, but… what are you actually offering me here?", "You still haven't told me what this does for me."],
+  Objection: ["See, that's the part that worries me — you kind of talked right past it.", "Mm. I still feel like you're pushing past what I said."],
+  Close:     ["Hang on — when exactly would money come out of my account?", "I don't want a surprise payment. How does that part work?"],
+};
+const LX_SUSPECT = [
+  "Wait, now hold on. That doesn't sound right. Who are you really with?",
+  "…A department? That's not who I mailed anything to. I'm not comfortable with this.",
+  "No. I'm not giving you anything off my account. I think I'd better go. Goodbye.",
+];
+const LX_SOLD  = "You know… you've been straight with me and you didn't rush me. Alright, let's go ahead and do it. What do you need from me?";
+const LX_THINK = "I don't know. Let me sit with it and talk to my family. Can you call me back another time?";
+
+function lxWait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+async function runLocalSmartCall(p){
+  const log = [];
+  const flags = { honestOpen:false, discovery:0, comfort:false, value:false, ack:false, closeDeposit:false, closePre:false };
+  let i = 0, misses = 0, suspicion = 0, dishonest = false;
+
+  const speakThem = async (text, stage) => {
+    if (VC.hangup) return;
+    vcStatus(`${p.who} is talking…`, "them");
+    vcCaption(p.who, text);
+    await vcSpeak(text, p.voice);
+    log.push({ role:"prospect", text, stage });
+  };
+
+  vcStatus(`${p.who} picked up`, "live");
+  await speakThem(p.beats[0].them, p.beats[0].stage);
+  if (VC.hangup) return;
+
+  let guard = 0;
+  while (!VC.hangup && i < p.beats.length && guard < 40){
+    guard++;
+    const beat = p.beats[i];
+
+    // the agent's turn
+    vcStatus("Your turn — just talk. Tap “Done talking” when you finish.", "you");
+    vcYou(""); const hintEl = document.getElementById("vc-hint"); if (hintEl) hintEl.textContent = "";
+    window.__vcModel = beat.model;
+    const doneBtn = document.querySelector(".vc-done"); if (doneBtn) doneBtn.disabled = false;
+    const said = await vcListen(t => vcYou(t));
+    if (VC.hangup) return;
+    if (doneBtn) doneBtn.disabled = true;
+    const agentText = (said || "").trim() || "(silence)";
+    const raw = agentText.toLowerCase();
+    const t = lxNorm(agentText);
+    const entry = { role:"agent", text: agentText, stage: beat.stage };
+    log.push(entry);
+
+    // think a beat so the answer feels considered, not instant
+    vcStatus(`${p.who} is thinking…`, "them"); vcYou("");
+    await lxWait(600 + Math.min(1000, agentText.length * 12));
+    if (VC.hangup) return;
+
+    // dishonesty overrides everything — cheating makes the call harder
+    if (lxDishonest(t)){
+      dishonest = true; suspicion++;
+      entry.verdict = "dishonest";
+      const line = suspicion >= 2 ? LX_SUSPECT[2] : (suspicion === 1 ? LX_SUSPECT[0] : LX_SUSPECT[1]);
+      await speakThem(line, "Suspicion");
+      if (suspicion >= 2) break;   // they hang up
+      continue;                    // same step, they still have to come clean
+    }
+
+    // bank the honest-skill flags for scoring
+    if (lxComfort(t)) flags.comfort = true;
+    if (lxValue(t)) flags.value = true;
+    if (lxAck(t)) flags.ack = true;
+    if (lxQuestion(t, raw)) flags.discovery++;
+    if (beat.stage === "Open" && lxOpen(t)) flags.honestOpen = true;
+    if (lxCloseDeposit(t)) flags.closeDeposit = true;
+    if (lxClosePre(t)) flags.closePre = true;
+
+    if (lxAddressed(beat.stage, t, raw)){
+      entry.verdict = "good"; misses = 0; i++;
+      if (i < p.beats.length) await speakThem(p.beats[i].them, p.beats[i].stage);
+    } else {
+      misses++; entry.verdict = "weak";
+      const bank = LX_STALL[beat.stage] || LX_STALL.Discovery;
+      if (misses >= 2){
+        // don't trap them: grumble and move on, but it counts against the score
+        misses = 0; i++;
+        if (i < p.beats.length) await speakThem("…I suppose. " + p.beats[i].them, p.beats[i].stage);
+      } else {
+        await speakThem(bank[0], beat.stage);
+      }
+    }
+  }
+
+  // how it lands
+  let sold;
+  if (dishonest && suspicion >= 2){
+    sold = false;   // hung up on a pretext — the closing line was already spoken
+  } else {
+    const earned = flags.honestOpen && flags.discovery >= 1 && flags.comfort && (flags.closeDeposit || flags.closePre) && !dishonest;
+    sold = !!earned;
+    await speakThem(sold ? LX_SOLD : LX_THINK, "Close");
+  }
+
+  VC.localLog = log;
+  VC.localResult = { sold, dishonest, suspicion, flags };
+  vcStatus(sold ? `${p.who} said yes.` : "Call ended.", "");
+  const hint = document.getElementById("vc-hint");
+  if (hint) hint.innerHTML = `<div style="margin-top:6px">${esc(sold ? "You earned it — honest open, real discovery, comfort-based ask, and you lined the draft to her deposit." : (dishonest ? "You leaned on a pretext and she bailed. Say who you are and ask straight — that's the whole game." : "She didn't say yes. Score it below and see the one fix that moves the needle."))}</div>`;
+  const ctr = document.querySelector(".vc-controls");
+  if (ctr) ctr.innerHTML = `<button class="btn green" data-act="vc-score">See your scorecard →</button>
+    <button class="btn sm ghost" data-act="vc-again">Call again</button>`;
+}
+
+/* score the finished LOCAL call from what the agent actually did — no key */
+function scoreLocalCall(){
+  const r = VC.localResult || {}; const f = r.flags || {};
+  const open      = f.honestOpen ? 9 : 4;
+  const discovery = f.discovery >= 3 ? 9 : f.discovery === 2 ? 8 : f.discovery === 1 ? 6 : 3;
+  const value     = f.value ? 8 : 4;
+  const objection = f.ack ? 8 : 4;
+  const price     = f.comfort ? 8 : 3;
+  const close     = (f.closeDeposit && f.closePre) ? 9 : (f.closeDeposit || f.closePre) ? 6 : 3;
+  let   rapport   = 7 - (r.suspicion || 0) * 3 + (f.ack ? 1 : 0);
+  let scores = [open, discovery, value, objection, price, close, rapport];
+  if (r.dishonest) scores = scores.map(n => Math.min(n, 2));   // dishonesty caps the whole call
+  state.rep.scores = scores.map(n => Math.max(0, Math.min(10, Math.round(n))));
+
+  const fixes = [
+    "Open honest: say your name, that you're a licensed agent with Closers Collective, and the real reason you're calling.",
+    "Ask more discovery — what they have now, who it protects, a comfortable monthly number — before you pitch anything.",
+    "Build value honestly (day-one coverage, it never goes up, a real carrier) instead of jumping straight to price.",
+    "Acknowledge the objection first — “totally fair” — then answer it. Don't steamroll past what they said.",
+    "Anchor a comfortable monthly number before you ever name a price.",
+    "Line the first draft up with their deposit day and promise a call a couple days before it.",
+    "Slow down and listen — not rushing them is what earns the yes.",
+  ];
+  if (r.dishonest){
+    state.rep.fix = "You leaned on a pretext (fake authority or the “last four” bank trick) and she bailed. That tanks the call and pulls your licence — say who you are and ask straight.";
+    return;
+  }
+  let lo = 0; for (let i = 1; i < state.rep.scores.length; i++) if (state.rep.scores[i] < state.rep.scores[lo]) lo = i;
+  state.rep.fix = fixes[lo];
+}
+
 /* score the finished smart call from the real transcript */
 async function scoreSmartCall() {
   if (!VC.smartHistory || !VC.smartHistory.length) return;
@@ -1555,7 +1683,7 @@ function endVoiceCall(toScore) {
   const root = document.getElementById("callroot"); if (root) root.innerHTML = "";
   const p = REP_PROSPECTS[state.rep.pi % REP_PROSPECTS.length];
   if (toScore) { state.rep.beat = p.beats.length; if (!state.rep.scores) state.rep.scores = REP_DIMS.map(() => 5); }
-  VC.smartHistory = null;
+  VC.smartHistory = null; VC.localLog = null; VC.localResult = null;
   render();
 }
 
@@ -2046,19 +2174,30 @@ function teamView() {
     <div class="table-wrap"><table>
       <thead><tr><th>Agent</th><th>Status</th><th class="r">Clients</th><th class="r">Sold</th>
         <th class="r">Monthly premium</th><th class="r">Overdue</th><th>Last active</th><th></th></tr></thead>
-      <tbody>${state.team.sort((a,b)=>Number(b.monthly_premium_sold||0)-Number(a.monthly_premium_sold||0)).map(t => `
+      <tbody>${state.team.sort((a,b)=>Number(b.monthly_premium_sold||0)-Number(a.monthly_premium_sold||0)).map(t => {
+        const isMe = t.agent_id === state.profile.id;
+        const isMgr = t.role === "admin";
+        return `
         <tr data-act="scopeto" data-id="${t.agent_id}">
-          <td><strong>${esc(t.full_name || "—")}</strong><div style="font-size:12px;color:var(--txt-3)">${esc(t.email)}</div></td>
+          <td><strong>${esc(t.full_name || "—")}</strong>${isMgr?` <span class="tag" data-role="mgr" style="color:var(--blue);border-color:var(--blue)">Manager</span>`:""}${isMe?` <span class="tag plain">you</span>`:""}<div style="font-size:12px;color:var(--txt-3)">${esc(t.email)}</div></td>
           <td><span class="stage"><span class="dot ${t.status==="active"?"s-sold":t.status==="pending"?"s-quoted":"s-lost"}"></span>${t.status}</span></td>
           <td class="r">${t.total_clients}</td>
           <td class="r">${t.sold}</td>
           <td class="r">${money(t.monthly_premium_sold)}</td>
           <td class="r" style="color:${Number(t.overdue_calls)?"var(--red)":"inherit"};font-weight:${Number(t.overdue_calls)?600:400}">${t.overdue_calls}</td>
           <td>${t.last_activity ? esc(prettyStamp(t.last_activity)) : "never"}</td>
-          <td class="r">${t.status==="active"
-            ? `<button class="btn quiet sm" data-act="disable" data-id="${t.agent_id}">Turn off</button>`
-            : `<button class="btn quiet sm" data-act="approve" data-id="${t.agent_id}">Turn on</button>`}</td>
-        </tr>`).join("")}</tbody></table></div>
+          <td class="r" style="white-space:nowrap">${isMe ? "" : `${
+            t.status==="active"
+              ? (isMgr
+                  ? `<button class="btn quiet sm" data-act="removemanager" data-id="${t.agent_id}">Remove manager</button>`
+                  : `<button class="btn quiet sm" data-act="makemanager" data-id="${t.agent_id}">Make manager</button>`)
+              : ""
+          }${
+            t.status==="active"
+              ? `<button class="btn quiet sm" data-act="disable" data-id="${t.agent_id}">Turn off</button>`
+              : `<button class="btn quiet sm" data-act="approve" data-id="${t.agent_id}">Turn on</button>`
+          }`}</td>
+        </tr>`;}).join("")}</tbody></table></div>
   </section>`;
 }
 
@@ -2324,6 +2463,23 @@ document.addEventListener("click", async (e) => {
       if (error) return flash(error.message, "bad");
       await refresh(); return flash("Access turned off.");
     }
+    case "makemanager": {
+      const row = state.team.find(t => t.agent_id === el.dataset.id) || {};
+      const who = row.full_name || row.email || "this agent";
+      if (!confirm(`Give ${who} full manager access?\n\nThey'll be able to see EVERY agent's book and production, approve or turn off agents, and promote others. Only do this for a true manager or partner.`)) return;
+      const { error } = await sb.from("profiles").update({ role: "admin", status: "active" }).eq("id", el.dataset.id);
+      if (error) return flash(error.message, "bad");
+      await refresh(); return flash(`${who} is now a manager.`);
+    }
+    case "removemanager": {
+      if (el.dataset.id === state.profile.id) return flash("You can't remove your own manager access.", "bad");
+      const row = state.team.find(t => t.agent_id === el.dataset.id) || {};
+      const who = row.full_name || row.email || "this manager";
+      if (!confirm(`Remove manager access from ${who}?\n\nThey'll go back to seeing only their own book.`)) return;
+      const { error } = await sb.from("profiles").update({ role: "agent" }).eq("id", el.dataset.id);
+      if (error) return flash(error.message, "bad");
+      await refresh(); return flash(`${who} is back to an agent.`);
+    }
     case "scopeto": {
       state.adminScope = el.dataset.id; state.view = "today";
       await refresh(); return;
@@ -2463,6 +2619,8 @@ document.addEventListener("click", async (e) => {
         vcStatus("Scoring your call…", "");
         const ctr = document.querySelector(".vc-controls"); if (ctr) ctr.innerHTML = "";
         await scoreSmartCall();
+      } else if (VC.localLog && VC.localLog.length) {
+        scoreLocalCall();
       }
       endVoiceCall(true);
       return;
