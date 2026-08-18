@@ -1019,6 +1019,7 @@ function shell() {
     ["today","Today", due],
     ["book","Book", 0],
     ["pipeline","Pipeline", cbDue],
+    ["info","Info", 0],
     ["training","Training", 0],
     ...(isAdmin ? [["team","Team", state.pending.filter(p=>p.status==="pending").length]] : [])
   ];
@@ -1043,6 +1044,7 @@ function shell() {
       ${state.view==="team" ? teamView()
         : state.view==="book" ? bookView()
         : state.view==="pipeline" ? pipelineView()
+        : state.view==="info" ? infoView()
         : state.view==="training" ? trainingView()
         : todayView()}
     </main>
@@ -1151,6 +1153,54 @@ function todayView() {
         : "Add a client with a sale date and a start date, and the calls book themselves."}</div>
       <button class="btn green" data-act="new">New client</button>
     </div>` : ""}`;
+}
+
+/* ---------- INFO: team reference. First up: carrier call tracking ---------- */
+const CARRIERS = [
+  { name:"Ethos", phone:"(415) 639-3968",
+    notes:`Official agent-support page mainly points agents to <a href="mailto:agents@getethos.com" style="color:var(--blue);font-weight:700">agents@getethos.com</a> — this is the phone number listed there.` },
+  { name:"Americo", phone:"(800) 231-0801",
+    notes:"Agent guide says this line reaches its departments.", extra:[["Agent Services","816-641-2850"]] },
+  { name:"Mutual of Omaha", phone:"(800) 867-6873",
+    notes:"Producer contracting / appointments.", extra:[["Sales Support","800-693-6083"]] },
+  { name:"Transamerica", phone:"(877) 234-4848",
+    notes:"Common agent support / sales line for Life &amp; Med Supp." },
+  { name:"InstaBrain", phone:"(800) 806-9714",
+    notes:"No dedicated agent hotline published — this general company number is listed by the BBB. InstaBrain is a technology platform, not the issuing carrier." },
+  { name:"American Amicable", phone:"(800) 736-7311",
+    notes:"Agent Support: prompts 1 &rarr; 1 &rarr; 1. &nbsp;Contracting: 1 &rarr; 1 &rarr; 3. &nbsp;Commissions: 1 &rarr; 1 &rarr; 4." },
+  { name:"Combined Insurance", phone:"(800) 225-4500",
+    notes:"Main Combined support.", extra:[["Worksite Solutions","800-544-9382"]] },
+];
+
+function infoView() {
+  return `
+  <div class="page-head">
+    <h2 class="display">Info.</h2>
+    <p class="sub">Quick reference for the team. Tap any number to call.</p>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+      <div>
+        <span class="tag" style="color:var(--blue)">CARRIER CALL TRACKING</span>
+        <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:6px 0 2px">Agent &amp; producer support lines</h3>
+        <div class="sub">The number an agent (or your VA) calls to reach each carrier. Tap to dial.</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin-top:14px"><table>
+      <thead><tr><th>Carrier</th><th>Agent / producer phone</th><th>Notes</th></tr></thead>
+      <tbody>${CARRIERS.map(c => `
+        <tr>
+          <td><strong style="font-size:15px">${esc(c.name)}</strong></td>
+          <td style="white-space:nowrap">
+            <a class="btn green sm" href="${telHref(c.phone)}" style="font-variant-numeric:tabular-nums">${esc(c.phone)}</a>
+            ${(c.extra||[]).map(([l,p]) => `<div style="margin-top:7px;font-size:12.5px"><span class="eyebrow">${esc(l)}</span> &middot; <a href="${telHref(p)}" style="color:var(--blue);font-weight:700">${esc(p)}</a></div>`).join("")}
+          </td>
+          <td style="font-size:13px;color:var(--txt-2);line-height:1.55;max-width:420px">${c.notes}</td>
+        </tr>`).join("")}</tbody></table></div>
+    <div class="rep-why" style="margin-top:12px">Numbers gathered from each carrier's agent pages — worth a quick double-check the first time you use one, since carriers change these.</div>
+  </div>`;
 }
 
 /* ---------- TRAINING: deliberately empty for now ---------- */
