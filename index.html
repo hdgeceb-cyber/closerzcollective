@@ -814,7 +814,9 @@ function telHref(p){ return "tel:" + String(p||"").replace(/[^\d+]/g,""); }
    4. DATA
    ============================================================ */
 async function loadAll() {
-  const scope = state.profile.role === "admin" ? state.adminScope : "me";
+  const isAdmin = state.profile.role === "admin";
+  // admins and uplines (anyone who can see past their own book) may scope the view.
+  const scope = (isAdmin || state.canScope) ? (state.adminScope || "me") : "me";
 
   let cq = sb.from("clients").select("*").order("updated_at",{ascending:false});
   let rq = sb.from("reminders").select("*, clients(id,full_name,phone,sale_date,policy_start_date,carrier,draft_day)")
@@ -827,21 +829,21 @@ async function loadAll() {
   if (scope === "me")       lq = lq.eq("agent_id", state.profile.id);
   else if (scope !== "all") lq = lq.eq("agent_id", scope);
 
-  const jobs = [cq, rq, lq];
-  if (state.profile.role === "admin") {
-    jobs.push(sb.from("team_stats").select("*"));
-    jobs.push(sb.from("profiles").select("*").order("created_at",{ascending:false}));
-  }
+  // team_stats returns everyone (admin) or self+downline (upline) or just self
+  // (plain agent) — RLS decides. We always load it to learn who they can see.
+  const jobs = [cq, rq, lq, sb.from("team_stats").select("*")];
+  if (isAdmin) jobs.push(sb.from("profiles").select("*").order("created_at",{ascending:false}));
+
   const res = await Promise.all(jobs);
   for (const r of res) if (r.error) throw r.error;
 
   state.clients   = res[0].data || [];
   state.reminders = res[1].data || [];
   state.leads     = res[2].data || [];
-  if (state.profile.role === "admin") {
-    state.team    = res[3].data || [];
-    state.pending = (res[4].data || []);
-  }
+  state.team      = res[3].data || [];
+  // an upline is anyone (not admin) who can see at least one agent besides themselves
+  state.canScope  = isAdmin || state.team.some(t => t.agent_id !== state.profile.id);
+  if (isAdmin) state.pending = res[4].data || [];
 }
 
 async function logActivity(client_id, type, body) {
@@ -987,7 +989,12 @@ function authScreen() {
         ${inTab ? "" : `
           <label class="field"><span>Full name</span><input class="input" name="full_name" required autocomplete="name"></label>
           <label class="field"><span>Mobile number</span><input class="input" name="phone" type="tel" placeholder="760-555-0134" autocomplete="tel"></label>
-          <label class="field"><span>Who is your upline?</span><input class="input" name="upline" placeholder="The person who brought you on" autocomplete="off"></label>`}
+          ${(ensureUplineOptions(), "")}
+          <label class="field"><span>Who is your upline?</span>
+            <select class="input" name="upline_id">
+              <option value="">${state.uplineOptions ? "— select your upline —" : "loading…"}</option>
+              ${(state.uplineOptions||[]).map(o=>`<option value="${esc(o.id)}">${esc(o.full_name)}</option>`).join("")}
+            </select></label>`}
         <label class="field"><span>Email</span><input class="input" name="email" type="email" required autocomplete="email"></label>
         <label class="field"><span>Password</span><input class="input" name="password" type="password" required minlength="8" autocomplete="${inTab?"current-password":"new-password"}"></label>
         <button class="btn green full" type="submit" ${state.busy?"disabled":""} style="margin-top:6px">
@@ -1025,13 +1032,13 @@ function shell() {
       </nav>
       <div class="whoami">
         <strong>${esc(state.profile.full_name || state.profile.email)}</strong>
-        ${isAdmin ? "Manager" : "Agent"} &middot; <span data-act="signout" style="cursor:pointer;text-decoration:underline">Sign out</span>
+        ${isAdmin ? "Manager" : (state.canScope ? "Upline" : "Agent")} &middot; <span data-act="signout" style="cursor:pointer;text-decoration:underline">Sign out</span>
         ${isAdmin ? `<div style="margin-top:9px"><button class="btn quiet sm" data-act="copysetup"
             style="padding:0;font-size:10px;letter-spacing:.1em">Copy the link for agents</button></div>` : ""}
       </div>
     </aside>
     <main class="main">
-      ${isAdmin ? adminScopeBar() : ""}
+      ${state.canScope ? scopeBar() : ""}
       ${state.msg ? `<div class="notice ${state.msg.kind}">${esc(state.msg.text)}</div>` : ""}
       ${state.view==="team" ? teamView()
         : state.view==="book" ? bookView()
@@ -1048,9 +1055,12 @@ function shell() {
   </div>`;
 }
 
-function adminScopeBar() {
-  const opts = [["me","My own book"],["all","Everyone"]]
-    .concat(state.team.filter(t=>t.id!==state.profile.id).map(t=>[t.agent_id, t.full_name || t.email]));
+function scopeBar() {
+  const isAdmin = state.profile.role === "admin";
+  const everyone = isAdmin ? "Everyone" : "Everyone on my team";
+  const opts = [["me","My own book"],["all",everyone]]
+    .concat(state.team.filter(t=>t.agent_id!==state.profile.id)
+      .map(t=>[t.agent_id, (t.full_name || t.email) + (t.in_training ? " · training" : "")]));
   return `<div class="toolbar" style="margin-bottom:22px">
     <span class="eyebrow">Viewing</span>
     <select class="input" data-act="scope" style="min-width:210px;height:34px">
@@ -2180,7 +2190,7 @@ function teamView() {
         const isMgr = t.role === "admin";
         return `
         <tr data-act="scopeto" data-id="${t.agent_id}">
-          <td><strong>${esc(t.full_name || "—")}</strong>${isMgr?` <span class="tag" data-role="mgr" style="color:var(--blue);border-color:var(--blue)">Manager</span>`:""}${(t.in_training && !isMgr)?` <span class="tag" data-role="training" style="color:#FFC24D;border-color:#FFC24D">Training</span>`:""}${isMe?` <span class="tag plain">you</span>`:""}<div style="font-size:12px;color:var(--txt-3)">${esc(t.email)}${t.upline?` &middot; <span data-role="upline">upline: ${esc(t.upline)}</span>`:""}</div></td>
+          <td><strong>${esc(t.full_name || "—")}</strong>${isMgr?` <span class="tag" data-role="mgr" style="color:var(--blue);border-color:var(--blue)">Manager</span>`:""}${(t.in_training && !isMgr)?` <span class="tag" data-role="training" style="color:#FFC24D;border-color:#FFC24D">Training</span>`:""}${isMe?` <span class="tag plain">you</span>`:""}<div style="font-size:12px;color:var(--txt-3)">${esc(t.email)}${(t.upline_name||t.upline)?` &middot; <span data-role="upline">upline: ${esc(t.upline_name||t.upline)}</span>`:""}</div></td>
           <td><span class="stage"><span class="dot ${t.status==="active"?"s-sold":t.status==="pending"?"s-quoted":"s-lost"}"></span>${t.status}</span></td>
           <td class="r">${t.total_clients}</td>
           <td class="r">${t.sold}</td>
@@ -2197,7 +2207,10 @@ function teamView() {
                   ? `<button class="btn quiet sm" data-act="removemanager" data-id="${t.agent_id}">Remove manager</button>`
                   : `<button class="btn quiet sm" data-act="makemanager" data-id="${t.agent_id}">Make manager</button>`)
               : ""
-          }<button class="btn quiet sm" data-act="setupline" data-id="${t.agent_id}">Upline</button>${
+          }<select class="input sm" data-act="uplineset" data-id="${t.agent_id}" title="Set this agent's upline" style="height:30px;max-width:150px;vertical-align:middle;margin:0 4px">
+            <option value="">— no upline —</option>
+            ${state.team.filter(o=>o.agent_id!==t.agent_id).map(o=>`<option value="${o.agent_id}" ${t.upline_id===o.agent_id?"selected":""}>${esc(o.full_name||o.email)}</option>`).join("")}
+          </select>${
             t.status==="active"
               ? `<button class="btn quiet sm" data-act="disable" data-id="${t.agent_id}">Turn off</button>`
               : `<button class="btn quiet sm" data-act="approve" data-id="${t.agent_id}">Turn on</button>`
@@ -2658,6 +2671,11 @@ document.addEventListener("click", async (e) => {
 document.addEventListener("change", async (e) => {
   const el = e.target.closest("[data-act]");
   if (el && el.dataset.act === "scope") { state.adminScope = el.value; await refresh(); return; }
+  if (el && el.dataset.act === "uplineset") {
+    const { error } = await sb.from("profiles").update({ upline_id: el.value || null }).eq("id", el.dataset.id);
+    if (error) flash(error.message, "bad"); else { await refresh(); flash("Upline updated."); }
+    return;
+  }
   if (e.target.id === "leadshot" && e.target.files && e.target.files[0]) {
     readScreenshot(e.target.files[0]);
   }
@@ -2739,6 +2757,18 @@ async function doSetPassword(form) {
   flash("Password saved. You are signed in.");
 }
 
+/* the "who is your upline?" dropdown needs the agent roster, and the signup
+   screen is shown before anyone signs in — so this reads a names-only list
+   through a function the anon role is allowed to call. Loads once. */
+async function ensureUplineOptions() {
+  if (state.uplineOptions || state._uplineLoading) return;
+  state._uplineLoading = true;
+  try { const { data } = await sb.rpc("upline_options"); state.uplineOptions = data || []; }
+  catch (e) { state.uplineOptions = []; }
+  state._uplineLoading = false;
+  render();
+}
+
 async function doAuth(form) {
   const f = Object.fromEntries(new FormData(form));
   state.busy = true; state.msg = null; render();
@@ -2750,7 +2780,11 @@ async function doAuth(form) {
       const { data, error } = await sb.auth.signUp({
         email: f.email.trim(), password: f.password,
         options: {
-          data: { full_name: f.full_name, phone: f.phone, upline: (f.upline || "").trim() },
+          data: {
+            full_name: f.full_name, phone: f.phone,
+            upline_id: f.upline_id || "",
+            upline: ((state.uplineOptions || []).find(o => o.id === f.upline_id) || {}).full_name || "",
+          },
           // Come back to wherever they actually signed up from, not to whatever
           // the project's default Site URL happens to be.
           emailRedirectTo: location.origin + location.pathname,
