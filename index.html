@@ -3647,23 +3647,32 @@ async function consumeAuthLink() {
   }
 
   if (AUTH_LINK.access_token && AUTH_LINK.refresh_token) {
-    const { error } = await sb.auth.setSession({
-      access_token: AUTH_LINK.access_token,
-      refresh_token: AUTH_LINK.refresh_token,
-    });
-    cleanUrl();
-    if (error) {
-      state.msg = { kind: "bad", text: error.message || "That link did not work." };
-      return true;
-    }
-    // A recovery or invite link means they still have to choose a password.
+    // SECURITY: only a password-reset ("recovery") or "invite" link may turn URL
+    // tokens into a session — and both immediately force the person to choose a
+    // NEW password, so a forwarded link can't silently ride into someone's account.
+    // Any other token link (a signup-confirmation link, a magic link, or one with
+    // no type) is REFUSED. This is exactly the hole that let a forwarded link log
+    // one agent into another agent's account.
     if (AUTH_LINK.type === "recovery" || AUTH_LINK.type === "invite") {
+      const { error } = await sb.auth.setSession({
+        access_token: AUTH_LINK.access_token,
+        refresh_token: AUTH_LINK.refresh_token,
+      });
+      cleanUrl();
+      if (error) {
+        state.msg = { kind: "bad", text: error.message || "That link did not work." };
+        return true;
+      }
       state.authMode = "set-password";
       render();
       return true;
     }
-    if (AUTH_LINK.type === "signup") state.msg = { kind: "good", text: "Email confirmed." };
-    return false;
+    // Not a password-set flow: do NOT sign anyone in from a link. A confirmation
+    // or sign-in link that got forwarded must never hand over a live session.
+    cleanUrl();
+    state.authMode = null;
+    state.msg = { kind: "bad", text: "For security, sign-in links can’t be shared or reused. Each person signs in with their own email and password — tap “Create account” if you don’t have one yet." };
+    return true;
   }
   cleanUrl();
   return false;
