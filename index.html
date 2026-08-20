@@ -158,6 +158,58 @@ input[type=date].input::-webkit-calendar-picker-indicator{filter:invert(58%) sep
   background:linear-gradient(90deg,rgba(46,139,255,.20),rgba(46,139,255,.05));
   color:#fff;border-color:var(--blue-line);box-shadow:inset 2px 0 0 var(--blue);
 }
+/* Info dropdown: hover the group (or be inside it) to reveal its pages */
+.navgroup{position:relative}
+.navgroup>a .caret{font-size:9px;opacity:.7}
+.submenu{overflow:hidden;max-height:0;transition:max-height .2s ease}
+.navgroup:hover .submenu,.navgroup.on .submenu{max-height:140px}
+.submenu a{padding-left:26px;font-size:11px;color:var(--txt-3);text-transform:none;letter-spacing:.04em}
+.submenu a.on{color:#fff}
+
+/* ===== Amendments playbook ===== */
+.amx{max-width:880px}
+.amx-doc{font-size:14.5px;line-height:1.68;color:var(--txt)}
+.amx-doc h1{font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:.01em;font-size:26px;line-height:1.12;color:#fff;margin:34px 0 4px;padding-top:22px;border-top:1px solid var(--line)}
+.amx-doc h1:first-child{border-top:none;padding-top:0;margin-top:0}
+.amx-doc h2{font-family:var(--disp);font-weight:800;font-style:italic;text-transform:uppercase;font-size:18px;color:var(--blue-hot);margin:26px 0 10px}
+.amx-doc h3{font-weight:800;font-size:15.5px;color:#fff;margin:22px 0 8px;letter-spacing:.01em}
+.amx-doc p{margin:10px 0}
+.amx-doc strong{color:#fff;font-weight:800}
+.amx-doc a{color:var(--blue);font-weight:700;word-break:break-word}
+.amx-doc a:hover{color:var(--blue-hot)}
+.amx-doc ul,.amx-doc ol{margin:10px 0;padding-left:22px}
+.amx-doc li{margin:5px 0}
+.amx-doc li::marker{color:var(--txt-3)}
+.amx-doc hr{border:none;border-top:1px solid var(--line);margin:26px 0}
+.amx-doc blockquote{margin:14px 0;padding:12px 16px;border-left:3px solid var(--gold);background:var(--gold-wash);border-radius:0 8px 8px 0;color:var(--txt);font-style:normal}
+.amx-doc blockquote p{margin:6px 0}
+.amx-doc blockquote strong{color:var(--gold)}
+.amx-doc code{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:13px;color:var(--blue-hot)}
+.amx-doc .table-wrap{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px}
+.amx-doc table{border-collapse:collapse;width:100%;font-size:13px}
+.amx-doc th{background:var(--panel-2);text-align:left;padding:10px 12px;font-weight:800;color:#fff;border-bottom:1px solid var(--line-hot);white-space:nowrap}
+.amx-doc td{padding:9px 12px;border-bottom:1px solid var(--line);color:var(--txt-2);vertical-align:top;line-height:1.5}
+.amx-doc tr:last-child td{border-bottom:none}
+.amx-doc td strong{color:var(--txt)}
+.amx-doc input[type=checkbox]{margin-right:8px;accent-color:var(--blue);transform:translateY(1px)}
+.amx-doc li.task{list-style:none;margin-left:-22px}
+.amx-toc{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 20px}
+.amx-toc .eyebrow{margin-bottom:8px}
+.amx-toc a{display:block;color:var(--txt-2);font-size:13px;padding:4px 0;font-weight:600;text-decoration:none;border:none}
+.amx-toc a:hover{color:var(--blue-hot)}
+
+/* ===== Tools ▸ business card maker ===== */
+.cm-wrap{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:20px;align-items:start}
+.cm-form{align-self:start}
+.cm-field{display:block;margin:0 0 14px}
+.cm-field .eyebrow{display:block;margin-bottom:6px}
+.cm-field .input{width:100%}
+.cm-field input[type=file]{padding:9px 10px;font-size:12.5px;color:var(--txt-2)}
+.cm-hint{display:block;margin-top:6px;font-size:11.5px;color:var(--txt-3);line-height:1.5}
+.cm-preview{position:sticky;top:0}
+.card-frame{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#0A0F1A;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.card-frame svg{display:block;width:100%;height:auto}
+@media(max-width:820px){ .cm-wrap{grid-template-columns:1fr} .cm-preview{position:static} }
 .pip{
   min-width:20px;height:19px;padding:0 6px;border-radius:10px;
   background:var(--red);color:#fff;font-size:11px;font-weight:800;
@@ -1020,6 +1072,7 @@ function shell() {
     ["book","Book", 0],
     ["pipeline","Pipeline", cbDue],
     ["info","Info", 0],
+    ["tools","Tools", 0],
     ["training","Training", 0],
     ...(isAdmin ? [["team","Team", state.pending.filter(p=>p.status==="pending").length]] : [])
   ];
@@ -1027,8 +1080,21 @@ function shell() {
     <aside class="rail">
       <div class="brand">${MARK}<div><h1>${esc(AGENCY_NAME)}</h1><div style="font-size:8.5px;font-weight:800;letter-spacing:.22em;color:var(--txt-3);margin-top:3px">FINAL EXPENSE</div></div></div>
       <nav class="nav">
-        ${nav.map(([v,label,n]) => `<a class="${state.view===v?"on":""}" data-act="go" data-v="${v}">
-          <span>${label}</span>${n ? `<span class="pip">${n}</span>` : ""}</a>`).join("")}
+        ${nav.map(([v,label,n]) => {
+          const pages = v === "info" ? INFO_PAGES : v === "tools" ? TOOLS_PAGES : null;
+          if (pages) {
+            const onGroup = pages.some(([sv]) => state.view === sv);
+            const landing = pages[0][0];
+            return `<div class="navgroup ${onGroup ? "on" : ""}">
+              <a class="${onGroup ? "on" : ""}" data-act="go" data-v="${landing}"><span>${label}</span><span class="caret">▾</span></a>
+              <div class="submenu">
+                ${pages.map(([sv,sl]) => `<a class="${state.view===sv?"on":""}" data-act="go" data-v="${sv}"><span>${esc(sl)}</span></a>`).join("")}
+              </div>
+            </div>`;
+          }
+          return `<a class="${state.view===v?"on":""}" data-act="go" data-v="${v}">
+          <span>${label}</span>${n ? `<span class="pip">${n}</span>` : ""}</a>`;
+        }).join("")}
         <a data-act="new" style="margin-top:14px;color:var(--blue);font-weight:700"><span>+ New client</span></a>
       </nav>
       <div class="whoami">
@@ -1045,6 +1111,8 @@ function shell() {
         : state.view==="book" ? bookView()
         : state.view==="pipeline" ? pipelineView()
         : state.view==="info" ? infoView()
+        : state.view==="amendments" ? amendmentsView()
+        : (state.view==="tools" || state.view==="cardmaker") ? cardMakerView()
         : state.view==="training" ? trainingView()
         : todayView()}
     </main>
@@ -1155,7 +1223,27 @@ function todayView() {
     </div>` : ""}`;
 }
 
-/* ---------- INFO: team reference. First up: carrier call tracking ---------- */
+/* ---------- INFO: team reference. Hovering "Info" opens a dropdown of these
+   pages; each page also shows them as tabs up top so it works on phones. ---------- */
+const INFO_PAGES = [
+  ["info", "Carrier call tracking"],
+  ["amendments", "Amendments"],
+];
+function infoTabs() {
+  return `<div class="chips" style="margin:0 0 16px">${INFO_PAGES.map(([v, l]) =>
+    `<span class="chip ${state.view === v ? "on" : ""}" data-act="go" data-v="${v}" style="cursor:pointer">${esc(l)}</span>`).join("")}</div>`;
+}
+
+/* ---------- TOOLS: things agents make for themselves. Same hover-dropdown
+   pattern as Info; more tools get added to this list. ---------- */
+const TOOLS_PAGES = [
+  ["cardmaker", "Business card"],
+];
+function toolsTabs() {
+  return `<div class="chips" style="margin:0 0 16px">${TOOLS_PAGES.map(([v, l]) =>
+    `<span class="chip ${(state.view === v || (v === "cardmaker" && state.view === "tools")) ? "on" : ""}" data-act="go" data-v="${v}" style="cursor:pointer">${esc(l)}</span>`).join("")}</div>`;
+}
+
 const CARRIERS = [
   { name:"Ethos", phone:"(415) 639-3968",
     notes:`Official agent-support page mainly points agents to <a href="mailto:agents@getethos.com" style="color:var(--blue);font-weight:700">agents@getethos.com</a> — this is the phone number listed there.` },
@@ -1179,6 +1267,7 @@ function infoView() {
     <h2 class="display">Info.</h2>
     <p class="sub">Quick reference for the team. Tap any number to call.</p>
   </div>
+  ${infoTabs()}
 
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
@@ -1201,6 +1290,275 @@ function infoView() {
         </tr>`).join("")}</tbody></table></div>
     <div class="rep-why" style="margin-top:12px">Numbers gathered from each carrier's agent pages — worth a quick double-check the first time you use one, since carriers change these.</div>
   </div>`;
+}
+
+function amendmentsView() {
+  const el = document.getElementById("amendments-doc");
+  const doc = el ? el.innerHTML : "";
+  // pull the top-level H1 headings out of the built doc to make a jump-menu
+  const toc = [];
+  doc.replace(/<h1[^>]*id="([^"]+)"[^>]*>([\s\S]*?)<\/h1>/g, (_, id, txt) => {
+    toc.push([id, txt.replace(/<[^>]+>/g, "").trim()]); return _;
+  });
+  return `
+  <div class="page-head">
+    <h2 class="display">Amendments.</h2>
+    <p class="sub">Final-expense field playbook — Americo Eagle Select &amp; Mutual of Omaha Living Promise.</p>
+  </div>
+  ${infoTabs()}
+
+  <div class="card amx">
+    ${toc.length ? `<div class="amx-toc"><div class="eyebrow">Jump to</div>${
+      toc.map(([id, t]) => `<a href="#${id}" data-act="amxjump" data-id="${esc(id)}">${esc(t)}</a>`).join("")
+    }</div>` : ""}
+    <div class="amx-doc">${doc}</div>
+  </div>`;
+}
+
+/* ---------- TOOLS ▸ BUSINESS CARD MAKER ----------
+   Agent types name / email / phone and drops in a photo; the CRM draws a
+   branded card and exports a PNG. Everything is drawn with SVG that we then
+   rasterize on a <canvas> — no external library, works fully offline. The
+   photo is a data: URL, so the canvas is never tainted and export works. */
+
+const CARD = {
+  green:  "#15321F",
+  greenDeep:"#0F2517",
+  cream:  "#F1EEE2",
+  gold:   "#C6A04C",
+  ink:    "#15321F",
+  label:  "#8C8C7E",
+  faint:  "#9BA89B",
+  W: 2600, H: 1483,
+  specialties: ["TERM · WHOLE LIFE", "FINAL EXPENSE · IUL BROKER"],
+  carriersHeading: "36+ A-RATED CARRIERS",
+  // rendered as plain text wordmarks (not the trademarked logo artwork), in
+  // roughly-brand colours so the strip still reads at a glance.
+  carriers: [
+    { t: "AMERICO",           c: "#0A2A5E", w: "800", ls: "0" },
+    { t: "Mutual of Omaha",   c: "#1B4B9B", w: "800", ls: "0", style: "italic" },
+    { t: "aetna",             c: "#7A2FA0", w: "800", ls: "0" },
+    { t: "ETHOS",             c: "#15503C", w: "700", ls: "6" },
+  ],
+};
+
+function cardState() {
+  if (!state.card) {
+    const p = state.profile || {};
+    state.card = {
+      name:  (p.card_name  || p.full_name || "").trim(),
+      email: (p.card_email || p.email || "").trim(),
+      phone: (p.card_phone || p.phone || "").trim(),
+      photo: null,
+      photoDirty: false,
+    };
+    // pull a previously-saved headshot back in as a data URL so both the live
+    // preview and the PNG export work (avoids canvas tainting from a remote URL)
+    if (p.avatar_url) hydrateAvatar(p.avatar_url);
+  }
+  return state.card;
+}
+
+function hydrateAvatar(url) {
+  if (!url) return;
+  const done = (dataUrl) => { const c = cardState(); c.photo = dataUrl; c.photoDirty = false; updateCardPreview(); };
+  if (String(url).startsWith("data:")) return done(url);
+  fetch(url).then(r => r.ok ? r.blob() : Promise.reject()).then(b => {
+    const fr = new FileReader(); fr.onload = () => done(fr.result); fr.readAsDataURL(b);
+  }).catch(() => { /* leave the placeholder if the saved photo can't be loaded */ });
+}
+
+/* One line of text that is GUARANTEED to fit inside maxW: first shrink the
+   font toward `min`, then, if it still would not fit, compress the glyphs with
+   SVG textLength so it never spills out of its panel. */
+function fitText(x, y, str, o) {
+  str = String(str == null ? "" : str);
+  const ls = Number(o.ls) || 0;
+  const upper = str.length > 0 && str === str.toUpperCase() && /[A-Z]/.test(str);
+  const factor = upper ? 0.66 : 0.55;                 // rough em-width per glyph
+  const natural = s => str.length * s * factor + Math.max(0, str.length - 1) * ls;
+  let sz = o.size;
+  while (natural(sz) > o.maxW && sz > o.min) sz -= 2;
+  const tl = natural(sz) > o.maxW ? Math.round(o.maxW) : null;
+  return `<text x="${x}" y="${y}" fill="${o.fill}" font-family="${o.family || "Georgia, serif"}"`
+    + ` font-weight="${o.weight || 400}"${o.style ? ` font-style="${o.style}"` : ""}`
+    + ` letter-spacing="${ls}" font-size="${sz}" text-anchor="${o.anchor || "start"}"`
+    + `${tl ? ` textLength="${tl}" lengthAdjust="spacingAndGlyphs"` : ""}>${esc(str)}</text>`;
+}
+
+function cardSVG(c) {
+  const W = CARD.W, H = CARD.H;
+  const leftW = Math.round(W * 0.335);           // dark panel width
+  const cx = Math.round(leftW / 2);
+  const cy = Math.round(H * 0.30);
+  const rRing = Math.round(H * 0.175);
+  const rPhoto = rRing - 18;
+
+  const name = (c.name || "NAME").toUpperCase();
+  const phone = c.phone || "(000) 000-0000";
+  const email = c.email || "name@email.com";
+
+  // right-column geometry
+  const rx = leftW + 150;                         // left edge of right content
+  const tickX = leftW + 110;
+  const phoneY = Math.round(H * 0.22);
+  const emailY = Math.round(H * 0.44);
+  const ruleY = Math.round(H * 0.70);
+  const carrHeadY = Math.round(H * 0.775);
+  const carrY = Math.round(H * 0.875);
+
+  const photo = c.photo
+    ? `<clipPath id="pc"><circle cx="${cx}" cy="${cy}" r="${rPhoto}"/></clipPath>
+       <image href="${c.photo}" x="${cx - rPhoto}" y="${cy - rPhoto}" width="${rPhoto * 2}" height="${rPhoto * 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#pc)"/>`
+    : `<circle cx="${cx}" cy="${cy}" r="${rPhoto}" fill="${CARD.cream}"/>
+       <text x="${cx}" y="${cy}" fill="${CARD.label}" font-family="Georgia, serif" font-size="52" text-anchor="middle" dominant-baseline="central">headshot</text>`;
+
+  // carrier wordmarks laid out left→right with gaps sized to each label
+  let cxpos = rx;
+  const carrierEls = CARD.carriers.map(k => {
+    const size = 54;
+    const el = `<text x="${cxpos}" y="${carrY}" fill="${k.c}" font-family="Georgia, 'Times New Roman', serif" font-weight="${k.w}" ${k.style ? `font-style="${k.style}"` : ""} letter-spacing="${k.ls}" font-size="${size}">${esc(k.t)}</text>`;
+    cxpos += k.t.length * size * 0.60 + 70;
+    return el;
+  }).join("");
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family="Georgia, serif">
+    <rect width="${W}" height="${H}" fill="${CARD.cream}"/>
+    <rect width="${leftW}" height="${H}" fill="${CARD.green}"/>
+    <rect x="${leftW}" y="0" width="7" height="${H}" fill="${CARD.gold}"/>
+
+    ${photo}
+    <circle cx="${cx}" cy="${cy}" r="${rRing}" fill="none" stroke="${CARD.gold}" stroke-width="4"/>
+
+    ${fitText(cx, Math.round(H*0.555), name, { size:128, min:56, maxW:leftW-100, anchor:"middle", fill:"#FFFFFF", weight:700, ls:2 })}
+    <rect x="${cx - 46}" y="${Math.round(H*0.585)}" width="92" height="4" fill="${CARD.gold}"/>
+    <text x="${cx}" y="${Math.round(H*0.665)}" fill="${CARD.faint}" font-family="Arial, Helvetica, sans-serif" font-size="34" letter-spacing="4" text-anchor="middle">${esc(CARD.specialties[0])}</text>
+    <text x="${cx}" y="${Math.round(H*0.715)}" fill="${CARD.faint}" font-family="Arial, Helvetica, sans-serif" font-size="34" letter-spacing="4" text-anchor="middle">${esc(CARD.specialties[1])}</text>
+
+    <rect x="${tickX}" y="${phoneY - 58}" width="6" height="118" fill="${CARD.gold}"/>
+    <text x="${rx}" y="${phoneY - 22}" fill="${CARD.label}" font-family="Arial, Helvetica, sans-serif" font-size="34" letter-spacing="8">PHONE</text>
+    ${fitText(rx, phoneY + 52, phone, { size:90, min:46, maxW:W-rx-150, fill:CARD.ink, weight:700 })}
+
+    <rect x="${tickX}" y="${emailY - 58}" width="6" height="118" fill="${CARD.gold}"/>
+    <text x="${rx}" y="${emailY - 22}" fill="${CARD.label}" font-family="Arial, Helvetica, sans-serif" font-size="34" letter-spacing="8">EMAIL</text>
+    ${fitText(rx, emailY + 48, email, { size:78, min:30, maxW:W-rx-150, fill:CARD.ink, weight:700 })}
+
+    <rect x="${rx}" y="${ruleY}" width="${W - rx - 150}" height="2" fill="#D8D3C2"/>
+    <text x="${rx}" y="${carrHeadY}" fill="${CARD.label}" font-family="Arial, Helvetica, sans-serif" font-size="36" font-weight="700" letter-spacing="7">${esc(CARD.carriersHeading)}</text>
+    ${carrierEls}
+  </svg>`;
+}
+
+function cardMakerView() {
+  const c = cardState();
+  const field = (labelText, key, type, ph) => `
+    <label class="cm-field">
+      <span class="eyebrow">${labelText}</span>
+      <input class="input" type="${type}" data-card="${key}" value="${esc(c[key] || "")}" placeholder="${esc(ph)}" autocomplete="off">
+    </label>`;
+  return `
+  <div class="page-head">
+    <h2 class="display">Tools.</h2>
+    <p class="sub">Make what you need for the field. Fill it in, drop a photo, download your card.</p>
+  </div>
+  ${toolsTabs()}
+
+  <div class="cm-wrap">
+    <div class="card cm-form">
+      <span class="tag" style="color:var(--blue)">BUSINESS CARD</span>
+      <h3 style="font-family:var(--disp);font-weight:900;font-style:italic;text-transform:uppercase;margin:6px 0 14px">Your details</h3>
+      ${field("Full name", "name", "text", "First Last")}
+      ${field("Phone", "phone", "tel", "(760) 000-0000")}
+      ${field("Email", "email", "email", "name@email.com")}
+      <label class="cm-field">
+        <span class="eyebrow">Headshot</span>
+        <input class="input" type="file" accept="image/*" data-card="photo">
+        <span class="cm-hint">A square, head-and-shoulders photo looks best. Stays on your device — nothing is uploaded.</span>
+      </label>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button class="btn green" data-act="cardsave" ${state.cardSaving ? "disabled" : ""}>${state.cardSaving ? "Saving…" : "Save to my profile"}</button>
+        <button class="btn ghost" data-act="carddownload">Download PNG</button>
+        ${c.photo ? `<button class="btn quiet" data-act="cardclearphoto">Remove photo</button>` : ""}
+      </div>
+      <div class="cm-hint" style="margin-top:10px">Saving keeps your details and headshot on your account, so your card is ready every time. The photo is stored privately to your profile.</div>
+    </div>
+
+    <div class="cm-preview">
+      <div class="eyebrow" style="margin-bottom:8px">Live preview</div>
+      <div id="card-preview" class="card-frame">${cardSVG(c)}</div>
+    </div>
+  </div>`;
+}
+
+function updateCardPreview() {
+  const box = document.getElementById("card-preview");
+  if (box) box.innerHTML = cardSVG(cardState());
+}
+
+function downloadCard() {
+  const c = cardState();
+  const svg = cardSVG(c);
+  const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = CARD.W; canvas.height = CARD.H;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, CARD.W, CARD.H);
+    URL.revokeObjectURL(url);
+    canvas.toBlob((png) => {
+      const a = document.createElement("a");
+      const safe = (c.name || "business-card").trim().replace(/[^\w]+/g, "-").replace(/^-+|-+$/g, "").toLowerCase() || "business-card";
+      a.href = URL.createObjectURL(png);
+      a.download = `${safe}-card.png`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }, "image/png");
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); state.msg = { kind: "bad", text: "Couldn't render the card image. Try a different photo." }; render(); };
+  img.src = url;
+}
+
+/* Save the agent's card to their profile: headshot to Supabase Storage (public
+   "avatars" bucket, one file per user), details onto the profile row. Next time
+   they open the card maker it comes back filled in. */
+async function saveCard() {
+  const c = cardState();
+  const uid = state.profile && state.profile.id;
+  if (!uid) return flash("You need to be signed in to save your card.", "bad");
+  state.cardSaving = true; render();
+  try {
+    let avatar_url = state.profile.avatar_url || null;
+    const path = `${uid}/headshot`;                          // one headshot per agent
+    if (c.photoDirty && c.photo) {
+      const blob = await (await fetch(c.photo)).blob();
+      const up = await sb.storage.from("avatars").upload(path, blob, { upsert: true, contentType: blob.type || "image/png" });
+      if (up.error) throw up.error;
+      const pub = sb.storage.from("avatars").getPublicUrl(path);
+      avatar_url = ((pub.data && pub.data.publicUrl) || "") + "?t=" + Date.now();  // bust the CDN cache
+    } else if (c.photoDirty && !c.photo) {
+      avatar_url = null;                                      // they removed their headshot
+      try { await sb.storage.from("avatars").remove([path]); } catch (_) { /* best-effort */ }
+    }
+    const patch = {
+      card_name:  (c.name || "").trim() || null,
+      card_phone: (c.phone || "").trim() || null,
+      card_email: (c.email || "").trim() || null,
+      avatar_url,
+    };
+    // routed through a SECURITY DEFINER function that only ever touches these
+    // four columns — so saving a card can never change a role, status or upline
+    const { error } = await sb.rpc("save_card", patch);
+    if (error) throw error;
+    Object.assign(state.profile, patch);
+    c.photoDirty = false;
+    state.cardSaving = false;
+    flash("Saved. Your card will be here, filled in, next time.", "good");
+  } catch (e) {
+    state.cardSaving = false;
+    flash("Couldn't save your card" + (e && e.message ? ": " + e.message : "") + ".", "bad");
+  }
 }
 
 /* ---------- TRAINING: deliberately empty for now ---------- */
@@ -2400,6 +2758,19 @@ document.addEventListener("click", async (e) => {
   switch (act) {
     case "tab":   state.authTab = el.dataset.v; state.msg = null; return render();
     case "go":    state.view = el.dataset.v; state.msg = null; state.search = ""; return render();
+    case "amxjump": {
+      e.preventDefault();
+      const t = document.getElementById(el.dataset.id);
+      if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    case "carddownload": downloadCard(); return;
+    case "cardsave": saveCard(); return;
+    case "cardclearphoto": {
+      const c = cardState(); c.photo = null; c.photoDirty = true;
+      const fi = document.querySelector('input[data-card="photo"]'); if (fi) fi.value = "";
+      return render();
+    }
     case "signout":
       await sb.auth.signOut();
       state.profile = null; state.authMode = null; state.pendingEmail = "";
@@ -2783,6 +3154,24 @@ document.addEventListener("input", (e) => {
   render();
   const again = document.querySelector("[data-act='search']");
   if (again) { again.focus(); again.setSelectionRange(pos, pos); }
+});
+
+/* business-card fields: patch the preview in place so typing never loses focus */
+document.addEventListener("input", (e) => {
+  const el = e.target.closest("[data-card]");
+  if (!el || el.type === "file") return;
+  cardState()[el.dataset.card] = el.value;
+  updateCardPreview();
+});
+document.addEventListener("change", (e) => {
+  const el = e.target.closest('input[type="file"][data-card="photo"]');
+  if (!el) return;
+  const f = el.files && el.files[0];
+  if (!f) return;
+  if (!f.type.startsWith("image/")) { state.msg = { kind: "bad", text: "That file isn't an image — pick a JPG or PNG photo." }; return render(); }
+  const reader = new FileReader();
+  reader.onload = () => { const c = cardState(); c.photo = reader.result; c.photoDirty = true; render(); };
+  reader.readAsDataURL(f);
 });
 
 document.addEventListener("submit", async (e) => {
@@ -3693,6 +4082,699 @@ if (CONFIGURED) {
 
 /* expose a couple of helpers for the automated test harness */
 window.__ledger = { todayISO, isoPlus, daysBetween, parseISO, relDay, age, ordinal, money, esc, CONFIGURED };
+</script>
+<script type="text/html" id="amendments-doc">
+<h1 id="final-expense-field-playbook">FINAL EXPENSE FIELD PLAYBOOK</h1>
+<h2>Americo Eagle Select + Mutual of Omaha Living Promise</h2>
+<p><strong>Written for agents in their first 90 days.</strong></p>
+<hr>
+<h1 id="how-to-use-this">HOW TO USE THIS</h1>
+<ul>
+<li><strong>Section 1</strong> — the rules that apply to both carriers. Read this first, once</li>
+<li><strong>Section 2</strong> — Americo Eagle Select</li>
+<li><strong>Section 3</strong> — Mutual of Omaha Living Promise</li>
+<li><strong>Section 4</strong> — side-by-side cheat sheet. Print this one</li>
+<li><strong>Section 5</strong> — links, logins, phone numbers
+<strong>If you only read one page, read Section 4.</strong></li>
+</ul>
+<hr>
+<h1 id="section-1-rules-for-both-carriers">SECTION 1 — RULES FOR BOTH CARRIERS</h1>
+<h2>The five rules</h2>
+<p><strong>1. Never change a signed application yourself.</strong>
+Not a date, not a spelling, not a checkbox. Both carriers will terminate you for it. The client has to agree to every change.
+<strong>2. Never sign for a client. Ever.</strong>
+Not on paper, not electronically, not &quot;they said it was fine.&quot; This is fraud. It ends careers.
+<strong>3. Never call a client about a change until you know two numbers.</strong>
+The new premium and the new death benefit. Written down, in front of you, before you dial.
+<strong>4. Never say &quot;denied&quot; when they were approved on a different plan.</strong>
+They were approved. Say approved.
+<strong>5. Never download an application from Google.</strong>
+Not DocHub. Not PrintFriendly. Not a PDF someone emailed you. Those are scraped, outdated, wrong-state copies. Submitting one gets the app rejected and can put your license at risk. <strong>Pull every form from the carrier portal, every time.</strong></p>
+<hr>
+<h2>The one skill that matters</h2>
+<p>On both carriers, the underwriting decision comes back <strong>while you are sitting with the client</strong>.
+Sometimes it comes back lower than what you quoted.
+<strong>Your entire job in that moment is to say the new offer out loud without your voice changing.</strong>
+If you sound disappointed, they get disappointed. If you sound confident, they sign.
+Everything else in this playbook is data entry. This is the skill.</p>
+<hr>
+<h2>Who do I call first?</h2>
+<p><strong>Call the CLIENT first</strong> when you need a fact only they have:</p>
+<ul>
+<li>Date of birth, SSN, address, name spelling</li>
+<li>Bank routing or account number</li>
+<li>Beneficiary&#39;s full name and details</li>
+<li>Their real height and weight
+<strong>Call the CARRIER first</strong> when money or coverage changed:</li>
+<li>The tier or plan moved</li>
+<li>The face amount changed</li>
+<li>The premium changed</li>
+<li>Anything you can&#39;t explain in one sentence</li>
+</ul>
+<hr>
+<h1 id="section-2-americo-eagle-select">SECTION 2 — AMERICO EAGLE SELECT</h1>
+<p><strong>Policy Series 311, 312, 413. Available in all states except New York.</strong></p>
+<h2>The big thing to understand</h2>
+<p><strong>Eagle Select basically has no amendments.</strong>
+Americo&#39;s guide says the eApplication has <strong>no phone call, no amendments, no paperwork.</strong>
+Here&#39;s what that means:</p>
+<ul>
+<li>The app <strong>starts you at the top tier automatically</strong></li>
+<li>It checks MIB and prescriptions <strong>while you sit there</strong></li>
+<li>In a few minutes it returns: Select 1, Select 2, Select 3, or Declined</li>
+<li><strong>That is the decision.</strong> It happens in front of your client
+You are not fixing paperwork later. You are handling a tier drop live.</li>
+</ul>
+<hr>
+<h2>The three tiers</h2>
+<p><strong>EAGLE SELECT 1 — best offer</strong></p>
+<ul>
+<li>Ages 40–85 (non-nicotine and nicotine)</li>
+<li>Face: $5,000 – $40,000</li>
+<li>Death benefit level for life
+<strong>EAGLE SELECT 2 — middle offer</strong></li>
+<li>Non-nicotine ages 40–85</li>
+<li>Nicotine ages 40–75</li>
+<li>Face: $5,000 – $40,000</li>
+<li>Death benefit level for life
+<strong>EAGLE SELECT 3 — graded offer</strong></li>
+<li>Ages 40–75</li>
+<li>Face: $5,000 – <strong>$25,000</strong></li>
+<li>Years 1–2: premiums paid back <strong>plus interest equal to the number of months since issue</strong><ul>
+<li>Month 7 = 7%. Month 20 = 20%. It grows every month</li>
+</ul>
+</li>
+<li><strong>Accidental death pays the FULL face amount instead of the graded benefit</strong></li>
+<li>Year 3+: 100% of face</li>
+<li>No Quit Smoking Advantage, no riders</li>
+</ul>
+<hr>
+<h2>Specs for all three</h2>
+<ul>
+<li><strong>Minimum face: $5,000</strong></li>
+<li><strong>Policy fee: $40/year, commissionable</strong></li>
+<li>Premium modes: Annual (1.00), Monthly Bank Draft (0.095)</li>
+<li>Premiums payable to attained age 100</li>
+<li><strong>NON-NICOTINE = NO NICOTINE FOR 24 MONTHS</strong><ul>
+<li>Twenty-four. Not twelve. Most carriers are twelve. Do not get this wrong</li>
+<li>Covers cigarettes, cigars, pipes, chew, snuff, gum, lozenges, patches, e-cigs, vapes</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2>The 9-step eApp</h2>
+<ol>
+<li>Enter demographics</li>
+<li>Enter product info — <strong>the app starts at the top tier</strong></li>
+<li>Answer the initial medical questions — <strong>these are NOT knock-out questions</strong></li>
+<li>Client signs the medical authorization (MIB, Rx, third-party checks)</li>
+<li><strong>Preliminary decision in minutes</strong> — Select 1, 2, 3, or Declined</li>
+<li>You may get follow-up underwriting questions — also <strong>not</strong> disqualifying<ul>
+<li>On &quot;Check All That Apply,&quot; if nothing applies, <strong>leave it blank</strong></li>
+</ul>
+</li>
+<li>Finish the app — beneficiary, banking</li>
+<li><strong>Both you and the client sign</strong></li>
+<li>Policy issues — delivered electronically or by mail</li>
+</ol>
+<hr>
+<h2>What actually declines a case</h2>
+<h3>Knock-out conditions</h3>
+<ul>
+<li>Organ or tissue transplant</li>
+<li>Multiple sclerosis</li>
+<li>Systemic lupus</li>
+<li>ALS (Lou Gehrig&#39;s)</li>
+<li>Alzheimer&#39;s or dementia</li>
+<li>Huntington&#39;s disease</li>
+<li>Brain tumor</li>
+<li>Parkinson&#39;s disease</li>
+<li>Amputation due to disease</li>
+</ul>
+<h3>Declinable if it happened in the last 12 months</h3>
+<ul>
+<li>Needed help bathing, toileting, or dressing due to a debilitating disease, or was bed-bound</li>
+<li>Received hospice care</li>
+<li>Used supplemental oxygen to breathe</li>
+<li>Dependent on a wheelchair or motorized mobility device</li>
+<li>Was told to get tests, surgery, or hospitalization that hasn&#39;t happened yet</li>
+<li>Is waiting on a diagnosis or test results</li>
+<li>Is currently hospitalized</li>
+</ul>
+<blockquote>
+<p><strong>Americo says this is not a complete list.</strong> Other conditions and combinations can decline.
+<strong>Use it as a pre-screen.</strong> Ask about these before you open the app and you&#39;ll never waste an appointment.</p>
+</blockquote>
+<hr>
+<h2>Build chart</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>Height</th>
+<th>Weight (lbs)</th>
+<th>Height</th>
+<th>Weight (lbs)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4&#39;8&quot;</td>
+<td>79–189</td>
+<td>5&#39;8&quot;</td>
+<td>116–279</td>
+</tr>
+<tr>
+<td>4&#39;9&quot;</td>
+<td>81–196</td>
+<td>5&#39;9&quot;</td>
+<td>119–287</td>
+</tr>
+<tr>
+<td>4&#39;10&quot;</td>
+<td>84–203</td>
+<td>5&#39;10&quot;</td>
+<td>122–296</td>
+</tr>
+<tr>
+<td>4&#39;11&quot;</td>
+<td>87–210</td>
+<td>5&#39;11&quot;</td>
+<td>126–304</td>
+</tr>
+<tr>
+<td>5&#39;0&quot;</td>
+<td>90–217</td>
+<td>6&#39;0&quot;</td>
+<td>130–313</td>
+</tr>
+<tr>
+<td>5&#39;1&quot;</td>
+<td>93–224</td>
+<td>6&#39;1&quot;</td>
+<td>133–322</td>
+</tr>
+<tr>
+<td>5&#39;2&quot;</td>
+<td>96–232</td>
+<td>6&#39;2&quot;</td>
+<td>137–331</td>
+</tr>
+<tr>
+<td>5&#39;3&quot;</td>
+<td>99–239</td>
+<td>6&#39;3&quot;</td>
+<td>141–340</td>
+</tr>
+<tr>
+<td>5&#39;4&quot;</td>
+<td>102–247</td>
+<td>6&#39;4&quot;</td>
+<td>144–349</td>
+</tr>
+<tr>
+<td>5&#39;5&quot;</td>
+<td>106–255</td>
+<td>6&#39;5&quot;</td>
+<td>148–358</td>
+</tr>
+<tr>
+<td>5&#39;6&quot;</td>
+<td>109–263</td>
+<td>6&#39;6&quot;</td>
+<td>152–367</td>
+</tr>
+<tr>
+<td>5&#39;7&quot;</td>
+<td>112–271</td>
+<td>6&#39;7&quot;</td>
+<td>156–377</td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2>SCRIPTS — handling the tier drop</h2>
+<h3>Quoted Select 1, got Select 2</h3>
+<p>Coverage works the same. Full benefit, level for life. Just a different price.
+<strong>Do not react. Say the new number like it was always the number.</strong></p>
+<blockquote>
+<p>&quot;Alright — you&#39;re approved. Your monthly is [$X]. Full coverage, starts right away, and that price never goes up. Want to get you protected?&quot;
+<strong>Never say:</strong> &quot;You didn&#39;t qualify for the good one.&quot;</p>
+</blockquote>
+<hr>
+<h3>Quoted Select 1 or 2, got Select 3</h3>
+<p><strong>This is the test.</strong>
+Say it in this order — accident first, money-back second, year three third, then close.</p>
+<blockquote>
+<p>&quot;Good news — you&#39;re approved, and you can&#39;t be turned down. Here&#39;s how yours works. If anything happens by accident, your family gets the full [$X] starting today. If it&#39;s natural causes in the first couple years, they get back every dollar you&#39;ve paid plus interest that grows every single month. And from year three on, it&#39;s the full [$X] no matter what. Your premium is [$Y] and it never goes up.&quot;
+<strong>Why it works:</strong> you never said &quot;graded,&quot; &quot;waiting period,&quot; or &quot;downgraded.&quot; Every sentence is something they <em>get</em>.</p>
+</blockquote>
+<hr>
+<h3>Declined</h3>
+<p>Don&#39;t over-apologize. Move.</p>
+<blockquote>
+<p>&quot;Americo isn&#39;t going to be the right fit — but that doesn&#39;t mean you can&#39;t get covered. Let me check a couple other companies.&quot;</p>
+</blockquote>
+<hr>
+<h2>Quit Smoking Advantage — sell it</h2>
+<p><strong>On Select 1 (ages 40–85) and Select 2 (ages 40–75). Not on Select 3.</strong></p>
+<ul>
+<li>Smokers pay <strong>non-nicotine rates for the first three policy years</strong></li>
+<li><strong>Always quote at SMOKER rates.</strong> It issues as smoker, they just pay the lower rate</li>
+<li>Earliest they can verify quitting: <strong>after the first policy year</strong>, with 12 consecutive nicotine-free months</li>
+<li>Prove it before the 3rd anniversary → death benefit and premium both stay level</li>
+</ul>
+<h3>The year-3 form — put this in your delivery script</h3>
+<p>Americo mails the client a notice before the end of year 3. <strong>It must be completed, signed, and returned.</strong></p>
+<ul>
+<li><strong>Option A — THE DEFAULT if they do nothing</strong><ul>
+<li>Death benefit <strong>decreases</strong> in year 4+</li>
+<li>Premium stays level</li>
+</ul>
+</li>
+<li><strong>Option B</strong> — death benefit level, <strong>premium increases</strong> in year 4+</li>
+<li><strong>Option C</strong> — both level, but requires attesting to 12 nicotine-free months <strong>and proving it</strong>
+<strong>Americo&#39;s own example.</strong> Male, 65, $10,000, Select 1, $54.15/month for three years:</li>
+<li>Quits: still $54.15, still $10,000</li>
+<li><strong>Option A (does nothing): still $54.15, but the death benefit drops to $5,423.70</strong></li>
+<li>Option B: $96.63/month, keeps $10,000
+<strong>Say this at delivery:</strong> <em>&quot;In about three years the company mails you a form. Do not throw it away — call me when it shows up.&quot;</em>
+That sentence protects your client and gives you a reason to be back in touch at year 3.</li>
+</ul>
+<hr>
+<h2>Riders</h2>
+<p><strong>Accelerated Benefit Payment Rider (2146)</strong> — free, Select 1 &amp; 2 only</p>
+<ul>
+<li>Terminal illness, 12 months or less to live (24 months in IL, MA, TX)</li>
+<li>Advances up to <strong>50%</strong> of the death benefit, max $20,000, min $1,000</li>
+<li>Admin fee up to $250, plus a lien</li>
+<li>One acceleration per policy</li>
+<li>Make sure insured and owner acknowledge the Disclosure Statement
+<strong>Accidental Death Benefit Rider (2179)</strong> — <strong>OPTIONAL</strong>, Select 1 &amp; 2 only</li>
+<li>Equal to the face amount</li>
+<li>Extra amount pays for accidental death as a fare-paying passenger on a common carrier</li>
+<li><strong>This was automatic on the old Eagle Premier product. It is NOT anymore. You have to add it</strong>
+<strong>Child and Grandchild Term Rider (2194)</strong></li>
+<li>$2.10 per $1,000 per child, annually</li>
+<li>Covers to age 25</li>
+<li>Max per child: lesser of $5,000 or the base face</li>
+<li>Child must be 15 days to under 17 at application, up to 10 children</li>
+<li><strong>Cannot be added after issue</strong> — though a newly eligible child can be added within 60 days</li>
+</ul>
+<hr>
+<h2>If something does need fixing</h2>
+<p>Rare on Eagle Select, but it happens — bad bank info, name spelling, beneficiary problem.</p>
+<ul>
+<li>Call <strong>800.231.0801</strong> and ask for amendments</li>
+<li>Client has to confirm the change</li>
+<li>Full signatures required — <strong>initials are not enough</strong></li>
+<li>The eApp uses text and email signatures with a <strong>6-digit code</strong></li>
+</ul>
+<hr>
+<h1 id="section-3-mutual-of-omaha-living-promise">SECTION 3 — MUTUAL OF OMAHA LIVING PROMISE</h1>
+<p><strong>Underwritten by United of Omaha Life Insurance Company. Not sold in New York.</strong></p>
+<blockquote>
+<p><strong>There are TWO plans: LEVEL and GRADED.</strong> Some websites claim a third &quot;modified&quot; tier. There isn&#39;t one. Don&#39;t repeat that to a client.</p>
+</blockquote>
+<hr>
+<h2>The two plans</h2>
+<p><strong>LEVEL BENEFIT</strong></p>
+<ul>
+<li>Full death benefit from day one — 100%</li>
+<li>Ages 45–85</li>
+<li>Face: $2,000 – $40,000</li>
+<li>Classes: Standard Tobacco / Non-Tobacco
+<strong>GRADED BENEFIT</strong></li>
+<li>Natural death in the first 2 years: <strong>all premiums paid back plus 10%</strong></li>
+<li>After 2 years: full benefit, any cause</li>
+<li><strong>Accidental death pays the FULL benefit in ALL years, including year one</strong></li>
+<li>Ages 45–80</li>
+<li>Face: $2,000 – $20,000</li>
+<li>One class only — no tobacco distinction</li>
+<li>No riders</li>
+</ul>
+<hr>
+<h2>The tier rule — memorize this</h2>
+<p>This decides everything:</p>
+<ul>
+<li>Any <strong>&quot;YES&quot; in Part One</strong> of the app → client may not be eligible for <strong>ANY</strong> coverage</li>
+<li>Any <strong>&quot;YES&quot; in Part Two</strong> → <strong>GRADED only</strong></li>
+<li>All answers <strong>&quot;NO&quot;</strong> → <strong>LEVEL</strong>
+<strong>Read the questions carefully and you&#39;ll know the outcome before the carrier tells you.</strong></li>
+</ul>
+<hr>
+<h2>Non-tobacco rule</h2>
+<ul>
+<li>No tobacco or nicotine in <strong>any</strong> form for <strong>12 months</strong> before the application</li>
+<li>Gum, patches, cigars — all of it</li>
+</ul>
+<blockquote>
+<p><strong>Careful:</strong> Americo is 24 months, Mutual of Omaha is 12. Don&#39;t mix them up.</p>
+</blockquote>
+<hr>
+<h2>Two ways to submit — pick the fast one</h2>
+<h3>Option A: iGO e-App (recommended)</h3>
+<ul>
+<li>Mutual of Omaha runs <strong>automated underwriting</strong> on the iGO e-App for Living Promise</li>
+<li>Instant approval, referral, or decline</li>
+<li><strong>Far fewer amendments than paper</strong></li>
+<li>Access it inside Sales Professional Access under <strong>Electronic Applications – Life</strong>, or through your IMO&#39;s iGO link</li>
+</ul>
+<h3>Option B: Paper + Apptical phone interview</h3>
+<p>Use only if the e-App isn&#39;t available. Steps below.</p>
+<hr>
+<h2>The Apptical call — step by step</h2>
+<p><strong>Apptical: 855-464-9577</strong>
+Hours: Mon–Fri 8:30 AM – 2:00 AM ET / Sat–Sun 10 AM – 10 PM ET</p>
+<ol>
+<li><strong>Fill out the whole paper app first</strong></li>
+<li>Call Apptical. Have ready:<ul>
+<li>Your first and last name</li>
+<li>Your United of Omaha producer number</li>
+<li>Which product (Level or Graded)</li>
+<li>Your phone number (in case the call drops)</li>
+<li>Your state and the app form number</li>
+<li>Client ID info: gender, name, SSN, address, phone, date of birth, birth state and country</li>
+</ul>
+</li>
+<li><strong>They give you a PHI number. WRITE IT ON THE APPLICATION IMMEDIATELY.</strong><ul>
+<li>Not writing it risks the case being processed wrong</li>
+</ul>
+</li>
+<li>Hand the phone to the client. They&#39;ll verify ID, give residence status, height and weight, confirm they signed, authorize the Rx check, and answer the health questions</li>
+<li>Apptical runs MIB and prescription checks <strong>live during the call</strong></li>
+<li>You get back on the phone for the result</li>
+</ol>
+<hr>
+<h2>The 4 possible results</h2>
+<h3>RESULT 1 — Eligible as applied</h3>
+<ul>
+<li>Tell the client</li>
+<li>Submit the signed app</li>
+<li>Book the delivery</li>
+</ul>
+<hr>
+<h3>RESULT 2A — Rx check moved them to GRADED</h3>
+<ul>
+<li><strong>Change the plan on the application</strong></li>
+<li><strong>Have the client INITIAL the change</strong> — initials are acceptable here</li>
+<li>Submit the signed app
+<strong>What you say:</strong></li>
+</ul>
+<blockquote>
+<p>&quot;You&#39;re approved. The company moved you to their graded plan. Here&#39;s what that means: if anything happens by accident, your family gets the full amount from day one. If it&#39;s natural causes in the first two years, they get back everything you paid plus ten percent. Year three on, it&#39;s the full amount. Sound good?&quot;</p>
+</blockquote>
+<hr>
+<h3>RESULT 2B — Not eligible for anything (Part 1 medication)</h3>
+<ul>
+<li>Tell the client honestly</li>
+<li>Write <strong>&quot;Withdrawn&quot;</strong> on the Producer Report</li>
+<li><strong>Still submit the signed application</strong> — this is required</li>
+<li>Shop them to another carrier</li>
+</ul>
+<hr>
+<h3>RESULT 3A — MIB conflict, client changes their answer</h3>
+<ul>
+<li>Apptical tells you to re-ask the question — ask it <strong>exactly as written</strong></li>
+<li>If the client corrects their answer: update the app, <strong>client initials it</strong></li>
+<li>You get a decision on the call</li>
+</ul>
+<hr>
+<h3>RESULT 3B — MIB conflict, client sticks to their answer</h3>
+<ul>
+<li><strong>Do not pressure them. Do not argue</strong></li>
+<li>Tell the client it goes to an underwriter</li>
+<li>Submit the signed app</li>
+<li>Watch <strong>Sales Professional Access</strong> for status
+<strong>What you say:</strong></li>
+</ul>
+<blockquote>
+<p>&quot;The company&#39;s records show something a little different. Since you&#39;re confident in your answer, they&#39;ll have an underwriter take a look. I&#39;ll follow up as soon as I hear back.&quot;</p>
+</blockquote>
+<hr>
+<h3>RESULT 4 — Declined on health questions</h3>
+<ul>
+<li>Tell the client</li>
+<li>Write <strong>&quot;Withdrawn&quot;</strong> on the Producer Report</li>
+<li>Submit the signed app anyway</li>
+<li>Shop elsewhere</li>
+</ul>
+<hr>
+<h2>NEVER argue with the Apptical rep</h2>
+<ul>
+<li><strong>They cannot change the decision.</strong> It&#39;s not their call</li>
+<li>Anything you tell them gets typed into a note and forwarded — that&#39;s it</li>
+<li>Arguing burns your time and makes you look weak in front of your client</li>
+<li>Take the result, work the client, move on</li>
+</ul>
+<hr>
+<h2>THE TRAP THAT GETS AGENTS IN TROUBLE</h2>
+<p><strong>Conditional coverage — the temporary coverage from collecting a check at the table — only applies if the client qualifies for the EXACT policy applied for, with NO modification</strong> to plan, premium, benefits, class, or amount.
+<strong>So the second a case changes tiers, that temporary coverage is GONE.</strong></p>
+<ul>
+<li>If you moved them Level → Graded, <strong>they are not covered right now</strong></li>
+<li><strong>Never tell an amended client &quot;you&#39;re covered as of today&quot;</strong>
+<strong>Say this instead:</strong></li>
+</ul>
+<blockquote>
+<p>&quot;You&#39;re approved and the policy is being issued. Your coverage starts once the policy is in force — I&#39;ll confirm the exact date with you.&quot;
+Other conditional receipt facts:</p>
+</blockquote>
+<ul>
+<li>Caps at $40,000 Level / $20,000 Graded</li>
+<li>Only fill out the Conditional Receipt form <strong>if you collected the initial premium</strong></li>
+<li>Coverage ends if the app isn&#39;t approved within 60 days</li>
+</ul>
+<hr>
+<h2>THE 14-DAY RULE</h2>
+<p><strong>Every application must be signed and submitted within 14 days — regardless of the result.</strong></p>
+<ul>
+<li>Approved, graded, withdrawn, declined — <strong>all of them</strong></li>
+<li>United of Omaha legally needs the client&#39;s signed MIB/Rx authorization on file</li>
+<li>New agents sit on withdrawn apps. Don&#39;t. Send it</li>
+</ul>
+<hr>
+<h2>Build chart — two max weights</h2>
+<p>The Living Promise build chart lists <strong>two maximum weights for every height</strong>: one for Level, and a <strong>higher one for Graded</strong>.</p>
+<ul>
+<li>Being over the Level max doesn&#39;t kill the case — it moves them to Graded</li>
+<li>Apptical asks the client directly, so a guess on your app gets caught</li>
+<li><strong>Ask for the real number</strong></li>
+</ul>
+<hr>
+<h2>Check before you write</h2>
+<ul>
+<li>Max $40,000 Living Promise Level</li>
+<li>Max $50,000 of <strong>all</strong> simplified issue with United of Omaha</li>
+<li>Max $20,000 Living Promise Graded</li>
+<li>Max $25,000 of <strong>all</strong> graded coverage with United of Omaha
+<strong>If they already have a Mutual of Omaha policy, it counts — and it gets reviewed at final decision, which can change the Apptical answer.</strong></li>
+</ul>
+<hr>
+<h2>Submission checklist</h2>
+<ul>
+<li class="task"><input disabled="" type="checkbox"> Proposed Insured and Owner sections complete</li>
+<li class="task"><input disabled="" type="checkbox"> Part One and Part Two both answered</li>
+<li class="task"><input disabled="" type="checkbox"> <strong>PHI number written on the app</strong></li>
+<li class="task"><input disabled="" type="checkbox"> Plan, payment mode, and amount selected</li>
+<li class="task"><input disabled="" type="checkbox"> <strong>MIB and HIPAA authorizations signed</strong> — always</li>
+<li class="task"><input disabled="" type="checkbox"> Conditional Receipt form filled out ONLY if you took a check</li>
+<li class="task"><input disabled="" type="checkbox"> State replacement forms signed if applicable</li>
+<li class="task"><input disabled="" type="checkbox"> All required forms left with the client</li>
+<li class="task"><input disabled="" type="checkbox"> Any &quot;yes&quot; answer explained in the <strong>Optional Comments</strong> box — it speeds up processing</li>
+</ul>
+<hr>
+<h2>Exclusion agents forget</h2>
+<ul>
+<li>Suicide within 2 years of the contestability date: premiums returned, no death benefit (1 year in North Dakota)</li>
+<li>The same 2-year clock restarts if the policy is reinstated</li>
+</ul>
+<hr>
+<h1 id="section-4-side-by-side-cheat-sheet">SECTION 4 — SIDE BY SIDE CHEAT SHEET</h1>
+<h3><em>Print this page</em></h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th></th>
+<th><strong>AMERICO EAGLE SELECT</strong></th>
+<th><strong>MUTUAL OF OMAHA LIVING PROMISE</strong></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Underwriter</strong></td>
+<td>Americo Financial Life &amp; Annuity</td>
+<td>United of Omaha</td>
+</tr>
+<tr>
+<td><strong>Tiers</strong></td>
+<td>3 — Select 1, 2, 3</td>
+<td>2 — Level, Graded</td>
+</tr>
+<tr>
+<td><strong>Issue ages</strong></td>
+<td>40–85 (Select 3: 40–75)</td>
+<td>45–85 (Graded: 45–80)</td>
+</tr>
+<tr>
+<td><strong>Min face</strong></td>
+<td>$5,000</td>
+<td>$2,000</td>
+</tr>
+<tr>
+<td><strong>Max face</strong></td>
+<td>$40,000 (Select 3: $25,000)</td>
+<td>$40,000 (Graded: $20,000)</td>
+</tr>
+<tr>
+<td><strong>Nicotine-free window</strong></td>
+<td><strong>24 months</strong></td>
+<td><strong>12 months</strong></td>
+</tr>
+<tr>
+<td><strong>Policy fee</strong></td>
+<td>$40/yr, commissionable</td>
+<td>$36/yr</td>
+</tr>
+<tr>
+<td><strong>Graded structure</strong></td>
+<td>Premiums + interest = # months since issue</td>
+<td>Premiums + 10%</td>
+</tr>
+<tr>
+<td><strong>Graded length</strong></td>
+<td>2 years, full at year 3</td>
+<td>2 years, full at year 3</td>
+</tr>
+<tr>
+<td><strong>Accidental death during graded</strong></td>
+<td>Full face</td>
+<td>Full face</td>
+</tr>
+<tr>
+<td><strong>How the decision comes</strong></td>
+<td>Instant, in the eApp</td>
+<td>Instant on iGO, or live on Apptical call</td>
+</tr>
+<tr>
+<td><strong>Fixing an app</strong></td>
+<td>Full signature required</td>
+<td><strong>Initials are acceptable</strong></td>
+</tr>
+<tr>
+<td><strong>Amendment method</strong></td>
+<td>Phone — call 800.231.0801</td>
+<td>Correct app + client initials, live</td>
+</tr>
+<tr>
+<td><strong>Submit deadline</strong></td>
+<td>Submit at point of sale</td>
+<td><strong>14 days, no exceptions</strong></td>
+</tr>
+<tr>
+<td><strong>Pending business</strong></td>
+<td>Agent Portal</td>
+<td>Sales Professional Access</td>
+</tr>
+<tr>
+<td><strong>Not available in</strong></td>
+<td>New York</td>
+<td>New York</td>
+</tr>
+</tbody></table></div>
+<h2>The differences that will trip you up</h2>
+<ol>
+<li><strong>Nicotine window: Americo 24 months, MoO 12 months.</strong> Quote wrong and you look like an amateur</li>
+<li><strong>Signatures: Americo needs a full signature. MoO accepts initials on a corrected app</strong></li>
+<li><strong>MoO has a hard 14-day submit deadline on EVERY app.</strong> Americo doesn&#39;t</li>
+<li><strong>MoO conditional coverage dies the moment the tier changes.</strong> Never tell an amended MoO client they&#39;re covered today</li>
+<li><strong>Americo&#39;s ADB rider is optional now.</strong> If you trained on Eagle Premier, you&#39;ll forget to add it</li>
+</ol>
+<h2>The universal script</h2>
+<blockquote>
+<p>&quot;You&#39;re approved. The company put you on a different plan than we talked about — here&#39;s exactly what it does for your family, and here&#39;s what it costs.&quot;</p>
+</blockquote>
+<h2>The script that kills the sale</h2>
+<blockquote>
+<p>&quot;So, uh, they came back and said you got denied for what we applied for...&quot;</p>
+</blockquote>
+<hr>
+<h1 id="section-5-links-and-contacts">SECTION 5 — LINKS AND CONTACTS</h1>
+<h2>AMERICO</h2>
+<p><strong>Where you work:</strong></p>
+<ul>
+<li><strong>Write apps:</strong> <a href="https://tools.americoagent.com">https://tools.americoagent.com</a> <em>(no www)</em></li>
+<li><strong>Practice first:</strong> <a href="https://tools-demo.americoagent.com">https://tools-demo.americoagent.com</a></li>
+<li><strong>Agent Portal:</strong> <a href="https://portal.americoagent.com">https://portal.americoagent.com</a></li>
+<li><strong>Register:</strong> <a href="https://account.americoagent.com/AgentRegistration">https://account.americoagent.com/AgentRegistration</a></li>
+<li>Agent Cafe: <a href="https://agentcafe.com">https://agentcafe.com</a></li>
+<li>Product site: <a href="https://americofinalexpense.com">https://americofinalexpense.com</a>
+<strong>To register:</strong> full name exactly as on your insurance license, last 4 of SSN, your Americo Agent ID, and a phone that receives texts (2FA required).
+<strong>Phone and email:</strong></li>
+<li><strong>Everything, one number: 800.231.0801</strong></li>
+<li>TeleAmendments direct: 855.248.8327 — <em>the 10/24 guide misprints this as 855.148.8327, which is not a valid number. Use 800.231.0801 until verified</em></li>
+<li>Agent Services: <a href="mailto:agent.services@americo.com">agent.services@americo.com</a></li>
+<li>Submit paperwork: <a href="mailto:submit@americo.com">submit@americo.com</a> — Fax 800.395.9238</li>
+<li>Customer Service: <a href="mailto:customer.service@americo.com">customer.service@americo.com</a> — Fax 800.395.9238</li>
+<li>Marketing Support: <a href="mailto:marketing.support@americo.com">marketing.support@americo.com</a>
+<strong>Mail:</strong> PO Box 410288, Kansas City, MO 64141-0288
+<strong>Overnight:</strong> 300 W. 11th Street, Kansas City, MO 64105-1618</li>
+</ul>
+<hr>
+<h2>MUTUAL OF OMAHA</h2>
+<p><strong>Where you work:</strong></p>
+<ul>
+<li><strong>Sales Professional Access (SPA) — everything lives here:</strong> <a href="https://producer.mutualofomaha.com">https://producer.mutualofomaha.com</a><ul>
+<li>Forms, materials, illustrations, e-apps, and pending business status</li>
+</ul>
+</li>
+<li><strong>iGO e-App:</strong> inside SPA under <strong>Electronic Applications – Life</strong>, or via your IMO&#39;s iGO link<ul>
+<li>There is no standalone public URL
+<strong>Phone:</strong></li>
+</ul>
+</li>
+<li><strong>Apptical POS interview: 855-464-9577</strong> (Mon–Fri 8:30 AM – 2 AM ET, Sat–Sun 10 AM – 10 PM ET)</li>
+<li><strong>Underwriting: 800-775-7896</strong></li>
+<li>Broker Sales Support: 800-693-6083</li>
+<li>Agency Sales Support: 877-617-5589</li>
+<li>United of Omaha main: 800-775-6000</li>
+<li><strong>Fax: 402-997-1800</strong> — double-check the number before sending, it&#39;s client health information
+<strong>Mail:</strong> United of Omaha, Attn: Individual Life Underwriting, P.O. Box 2476, Omaha, NE 68103-2476
+<strong>Overnight:</strong> Attn: Individual Life Underwriting, 9330 State Hwy 133, Blair, NE 68008</li>
+</ul>
+<hr>
+<h2>Reference PDFs</h2>
+<p><strong>Americo:</strong></p>
+<ul>
+<li>Eagle Select Agent Guide (current, 10/24): <a href="https://summersagency.com/wp-content/uploads/2024/11/Americo-Select-2024.pdf">https://summersagency.com/wp-content/uploads/2024/11/Americo-Select-2024.pdf</a></li>
+<li>Agent Tools flyer: <a href="https://www.americo.com/Content/AgentToolsFlyer.pdf">https://www.americo.com/Content/AgentToolsFlyer.pdf</a></li>
+<li>Portal login instructions: <a href="https://www.americo.com/Content/PortalLoginInstructions.pdf">https://www.americo.com/Content/PortalLoginInstructions.pdf</a>
+<strong>Mutual of Omaha:</strong></li>
+<li>SPA getting-started guide: <a href="https://producer.mutualofomaha.com/enterprise/wcm/connect/producer.mutualofomaha.com-9968/b80b6577-e460-4b2f-9855-f31226afddd9/461522_spa_guide.pdf?MOD=AJPERES&CVID=nz853Gk">https://producer.mutualofomaha.com/enterprise/wcm/connect/producer.mutualofomaha.com-9968/b80b6577-e460-4b2f-9855-f31226afddd9/461522_spa_guide.pdf?MOD=AJPERES&amp;CVID=nz853Gk</a></li>
+<li>iGO e-App user guide: <a href="https://aip-cms.s3.amazonaws.com/media/documents/MTOFE_e-app_instructions.pdf">https://aip-cms.s3.amazonaws.com/media/documents/MTOFE_e-app_instructions.pdf</a></li>
+<li>Living Promise client highlight sheet: <a href="https://producer.mutualofomaha.com/enterprise/wcm/connect/producer.mutualofomaha.com-9968/efbe83e0-01d4-4275-b956-7d393e577666/45107_living-promise-client-highlight-sheet.pdf?MOD=AJPERES&CVID=nz81aeV">https://producer.mutualofomaha.com/enterprise/wcm/connect/producer.mutualofomaha.com-9968/efbe83e0-01d4-4275-b956-7d393e577666/45107_living-promise-client-highlight-sheet.pdf?MOD=AJPERES&amp;CVID=nz81aeV</a></li>
+<li>Living Promise Product &amp; Underwriting Guide (California edition, older): <a href="https://www.datocms-assets.com/13639/1563367329-moo-livingpromise-uw-guide.pdf">https://www.datocms-assets.com/13639/1563367329-moo-livingpromise-uw-guide.pdf</a></li>
+</ul>
+<blockquote>
+<p><strong>Some of these are hosted by third-party agencies, not the carriers.</strong> Use them for training. Pull the official copies from the portals before relying on them.</p>
+</blockquote>
+<hr>
+<h1 id="your-first-week">YOUR FIRST WEEK</h1>
+<ol>
+<li>Register on both portals</li>
+<li><strong>Run 5 practice apps on tools-demo.americoagent.com</strong> before you sit with anyone</li>
+<li>Memorize Americo&#39;s knock-out list and 12-month declinable list</li>
+<li>Memorize Mutual of Omaha&#39;s Part One / Part Two rule</li>
+<li>Memorize both graded scripts, word for word</li>
+<li>Practice saying a tier drop out loud until your voice doesn&#39;t change
+<strong>The tier drop is the only hard part of this job. Everything else is data entry.</strong></li>
+</ol>
+<hr>
+<h1 id="open-items-verify-before-relying-on-these">OPEN ITEMS — VERIFY BEFORE RELYING ON THESE</h1>
+<ul>
+<li class="task"><input disabled="" type="checkbox"> Dial Americo 855.248.8327 and confirm it&#39;s live (their guide has a typo)</li>
+<li class="task"><input disabled="" type="checkbox"> Pull the official Eagle Select guide from the Agent Portal</li>
+<li class="task"><input disabled="" type="checkbox"> Pull the current-state Living Promise guide from SPA — the one referenced here is a California edition and is several years old</li>
+<li class="task"><input disabled="" type="checkbox"> Confirm which Mutual of Omaha sales support line your agency uses (broker vs agency)</li>
+<li class="task"><input disabled="" type="checkbox"> Confirm state availability for both carriers in your writing states</li>
+<li class="task"><input disabled="" type="checkbox"> <strong>Never quote rates from any PDF.</strong> Always run a current illustration</li>
+</ul>
 </script>
 </body>
 </html>
