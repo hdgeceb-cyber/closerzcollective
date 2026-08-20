@@ -211,17 +211,13 @@ input[type=date].input::-webkit-calendar-picker-indicator{filter:invert(58%) sep
 .card-frame svg{display:block;width:100%;height:auto}
 @media(max-width:820px){ .cm-wrap{grid-template-columns:1fr} .cm-preview{position:static} }
 
-/* ===== Training ▸ call library ===== */
+/* ===== Training ▸ calls + scripts (Drive embeds) ===== */
 .trn-group{margin-bottom:16px}
 .trn-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.trn-count{font-size:11px;color:var(--txt-3);font-weight:700;letter-spacing:.1em;text-transform:uppercase}
-.trn-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:11px 0;border-top:1px solid var(--line)}
-.trn-row:first-of-type{border-top:none}
-.trn-meta{display:flex;align-items:center;gap:8px;min-width:170px}
-.trn-title{font-weight:700;color:var(--txt);font-size:14px}
-.pill-sold{font-size:9px;font-weight:800;letter-spacing:.1em;color:#04120b;background:var(--green);padding:2px 6px;border-radius:5px}
-.trn-audio{height:36px;max-width:min(440px,58%);flex:1}
-@media(max-width:640px){ .trn-audio{max-width:100%;width:100%;flex:1 1 100%} .trn-meta{min-width:0} }
+.trn-open{font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--blue);text-decoration:none;white-space:nowrap}
+.trn-open:hover{color:var(--blue-hot)}
+.trn-folder{width:100%;height:220px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:2px;display:block}
+.trn-doc-frame{width:100%;height:440px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-top:2px;display:block}
 .pip{
   min-width:20px;height:19px;padding:0 6px;border-radius:10px;
   background:var(--red);color:#fff;font-size:11px;font-weight:800;
@@ -1663,78 +1659,49 @@ function repSteps(p, beat) {
     `<span class="chip ${reached.has(s) ? "on" : ""}" style="pointer-events:none">${s}</span>`).join("")}</div>`;
 }
 
-/* ---------- TRAINING ▸ recorded-call library ----------
-   Real sales calls, grouped by phase, streamed to logged-in agents from a
-   PRIVATE Supabase Storage bucket via short-lived signed URLs (the calls hold
-   customer PII, so nothing is public). New calls dropped in the bucket show up
-   here automatically — the list is read live from storage. */
-const TRAINING_GROUPS = [
-  ["Full calls",     "Full calls",     "Complete calls, start to finish — hear how a whole appointment flows."],
-  ["Needs Analysis", "Needs analysis", "The discovery phase — uncovering the situation and the real need."],
-  ["Pitch Price",    "Pitch & price",  "Presenting the plan and the number — and holding it."],
+/* ---------- TRAINING ▸ calls + scripts (Google Drive) ----------
+   The recorded calls and the scripts live in the team's Google Drive. We embed
+   the shared folders and docs directly, so Drive stores and streams everything
+   and nothing large runs through the app's backend. The folders and docs must
+   be shared "Anyone with the link — Viewer" for agents to open them. */
+const TRAINING_CALLS = [
+  ["Full calls",     "Complete calls, start to finish — hear how a whole appointment flows.", "1vD9qPNIFlRIkCovf6cT7sr7UGSnsVVMd"],
+  ["Needs analysis", "The discovery phase — uncovering the situation and the real need.",     "171uEmT150RSi2qlqLKTeOhGVKZBIeeUy"],
+  ["Pitch & price",  "Presenting the plan and the number — and holding it.",                  "1OTm9A58LuLBHlSJ1-hFyiy5M0xx30xnS"],
+];
+const TRAINING_SCRIPTS = [
+  ["Atlas IUL Script", "The IUL call — opening, the explainer, and the close.",        "1oR7jDc0Z38WfZUQm_3DMFig_sPD7BYhxSGg_mV_HgcU"],
+  ["Atlas MP Script",  "The mortgage-protection call — discovery, financials, close.", "1aRn1kXxg_EiQshG-NpB5xUPiFCu7dLuxepbTLD6d3Sw"],
 ];
 
-function callTitle(name) {
-  const base = name.replace(/\.[^.]+$/, "");
-  let parts = base.split(/_+/);
-  while (parts.length > 1 && /^(\d+m\d+s|\d{4,})$/i.test(parts[0])) parts.shift();
-  const s = parts.join(" ").replace(/\s+/g, " ").trim();
-  return s || base;
-}
-
-async function loadTrainingCalls() {
-  if (state.training && state.training.loading) return;
-  state.training = Object.assign({}, state.training, { loading: true, error: null });
-  try {
-    const groups = {};
-    for (const [folder] of TRAINING_GROUPS) {
-      const { data: files, error } = await sb.storage.from("training").list(folder, { limit: 500, sortBy: { column: "name", order: "asc" } });
-      if (error) throw error;
-      const real = (files || []).filter(f => f.name && !f.name.startsWith(".") && /\.\w+$/.test(f.name));
-      let urls = [];
-      if (real.length) {
-        const { data: signed } = await sb.storage.from("training").createSignedUrls(real.map(f => `${folder}/${f.name}`), 28800);
-        urls = signed || [];
-      }
-      groups[folder] = real.map((f, i) => ({
-        name: f.name, title: callTitle(f.name),
-        url: (urls[i] && !urls[i].error) ? urls[i].signedUrl : null,
-        sold: /sold|success/i.test(f.name),
-      }));
-    }
-    state.training = { loaded: true, loading: false, error: null, groups };
-  } catch (e) {
-    state.training = { loaded: false, loading: false, error: (e && e.message) || "Could not load the calls.", groups: {} };
-  }
-  render();
-}
-
 function trainingView() {
-  const t = state.training || {};
-  if (!t.loaded && !t.loading && !t.error) loadTrainingCalls();
-  const total = t.groups ? Object.values(t.groups).reduce((a, g) => a + g.length, 0) : 0;
   return `
   <div class="page-head">
     <h2 class="display">Training.</h2>
-    <p class="sub">Real recorded calls to learn from${t.loaded ? ` — ${total} on the board` : ""}. Listen for the moves, the pauses, and the close.</p>
+    <p class="sub">Real recorded calls and the scripts behind them. Listen, read, and run it back.</p>
   </div>
-  ${t.error ? `<div class="notice bad">Couldn't load the calls: ${esc(t.error)}${/not.*found|does not exist|bucket/i.test(t.error) ? " — the training library hasn't been set up yet." : ". If you just signed in, give it a moment and reopen this tab."}</div>` : ""}
-  ${(!t.loaded && !t.error) ? `<div class="card"><div class="sub">Loading the call library…</div></div>` : ""}
-  ${t.loaded ? TRAINING_GROUPS.map(([folder, label, desc]) => {
-    const calls = t.groups[folder] || [];
-    return `<div class="card trn-group">
+
+  <div class="eyebrow" style="margin:4px 0 10px">Recorded calls</div>
+  ${TRAINING_CALLS.map(([label, desc, id]) => `
+    <div class="card trn-group">
       <div class="trn-head">
         <span class="tag" style="color:var(--blue)">${esc(label.toUpperCase())}</span>
-        <span class="trn-count">${calls.length} call${calls.length === 1 ? "" : "s"}</span>
+        <a class="trn-open" href="https://drive.google.com/drive/folders/${id}" target="_blank" rel="noopener">Open in Drive ↗</a>
       </div>
       <div class="sub" style="margin:2px 0 12px">${esc(desc)}</div>
-      ${calls.length ? calls.map(c => `
-        <div class="trn-row">
-          <div class="trn-meta"><span class="trn-title">${esc(c.title)}</span>${c.sold ? `<span class="pill-sold">SOLD</span>` : ""}</div>
-          ${c.url ? `<audio class="trn-audio" controls preload="none" src="${esc(c.url)}"></audio>` : `<span class="sub">unavailable</span>`}
-        </div>`).join("") : `<div class="sub">No calls in here yet.</div>`}
-    </div>`;
-  }).join("") : ""}`;
+      <iframe class="trn-folder" src="https://drive.google.com/embeddedfolderview?id=${id}#list" loading="lazy" title="${esc(label)} recordings"></iframe>
+    </div>`).join("")}
+
+  <div class="eyebrow" style="margin:22px 0 10px">Scripts</div>
+  ${TRAINING_SCRIPTS.map(([title, desc, id]) => `
+    <div class="card trn-group">
+      <div class="trn-head">
+        <span class="tag" style="color:var(--blue)">${esc(title.toUpperCase())}</span>
+        <a class="trn-open" href="https://docs.google.com/document/d/${id}/edit" target="_blank" rel="noopener">Open in Docs ↗</a>
+      </div>
+      <div class="sub" style="margin:2px 0 12px">${esc(desc)}</div>
+      <iframe class="trn-doc-frame" src="https://docs.google.com/document/d/${id}/preview" loading="lazy" title="${esc(title)}"></iframe>
+    </div>`).join("")}`;
 }
 
 /* ============================================================
